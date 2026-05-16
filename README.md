@@ -8,7 +8,7 @@ qfl-mini is a minimal execution sandbox for federated quantum-classical workload
 
 qfl-mini is a small Python prototype for executing federated quantum workloads with local quantum clients and a classical coordinator.
 
-Each quantum client owns local parameters and runs a simple PennyLane circuit. The classical coordinator collects the local execution results, applies mean aggregation, and produces readable reports. The multi-round demo also writes a JSON artifact so runs can be inspected and reproduced later.
+Each quantum client owns local parameters and runs a simple PennyLane circuit. The classical coordinator collects the local execution results, applies mean aggregation, and produces readable reports. The demos also write JSON artifacts so runs can be inspected and reproduced later.
 
 The project is intentionally small. It is meant to make the basic execution, observation, and reproducibility path clear before larger federated quantum infrastructure is added.
 
@@ -22,6 +22,8 @@ qfl-mini is:
 
 * not a Quantum OS
 * not a full QFL framework
+* not full QFL training
+* not gradient-based optimization yet
 * not a production system
 * not a replacement for PennyLane, Qiskit, Flower, Braket, or Cirq
 * not connected to real quantum hardware yet
@@ -76,6 +78,18 @@ This writes:
 runs/demo_multi_round.json
 ```
 
+## Run the parameter update demo
+
+```bash
+python examples/run_parameter_update.py
+```
+
+This writes:
+
+```text
+runs/demo_parameter_update.json
+```
+
 ## Development checks
 
 ```bash
@@ -86,7 +100,7 @@ python -m compileall qflmini examples
 
 ## Current status
 
-Only Phase 0 is implemented.
+Only Phase 0 and a small Phase 1 seed are implemented.
 
 Implemented:
 
@@ -97,10 +111,12 @@ Implemented:
 * one-round report
 * multi-round execution
 * JSON artifact export
+* minimal parameter update loop
 
 Not implemented yet:
 
-* parameter updates
+* full QFL training
+* gradient-based optimization
 * training loops
 * noise models
 * non-IID data
@@ -110,10 +126,10 @@ Not implemented yet:
 
 ## Roadmap
 
-This public-ready version still belongs to the Phase 0 / early Phase 1 seed.
+This version still belongs to the Phase 0 / early Phase 1 seed. The parameter update loop is the Phase 1 seed, not a full training framework.
 
 * Phase 0: minimal federated quantum execution
-* Phase 1: multi-round execution and run history
+* Phase 1: multi-round execution, run history, and a minimal parameter update loop
 * Phase 2: parameter updates
 * Phase 3: federated variational quantum training
 * Phase 4: noise and backend realism

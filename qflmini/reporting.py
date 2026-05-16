@@ -69,3 +69,38 @@ def format_multi_round_report(run_result: dict[str, Any]) -> str:
     )
 
     return "\n".join(lines)
+
+
+def format_parameter_update_report(update_result: dict[str, Any]) -> str:
+    """Format a parameter update result as a readable text report.
+
+    Args:
+        update_result: Result dictionary returned by
+            ``ParameterUpdateCoordinator.run_updates``.
+
+    Returns:
+        A clean human-readable report for the parameter update demo.
+    """
+    lines = [
+        "qfl-mini: parameter update demo",
+        "",
+        "Rounds:",
+    ]
+
+    for round_result in update_result["rounds"]:
+        lines.append(
+            f"- round {round_result['round']} | "
+            f"theta={round_result['theta']:.6f} | "
+            f"aggregated_result={round_result['aggregated_result']:.6f} | "
+            f"next_theta={round_result['next_theta']:.6f}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Final theta:",
+            f"{update_result['final_theta']:.6f}",
+        ]
+    )
+
+    return "\n".join(lines)
