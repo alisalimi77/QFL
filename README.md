@@ -2,6 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+[![tests](https://github.com/alisalimi77/QFL/actions/workflows/tests.yml/badge.svg)](https://github.com/alisalimi77/QFL/actions/workflows/tests.yml)
 
 A minimal execution sandbox for federated quantum-classical workloads.
 
