@@ -1,0 +1,71 @@
+"""Human-readable reporting helpers for qfl-mini."""
+
+from __future__ import annotations
+
+from typing import Any
+
+
+def format_round_report(round_result: dict[str, Any]) -> str:
+    """Format one coordinator round result as a readable text report.
+
+    Args:
+        round_result: Result dictionary returned by ``Coordinator.run_round``.
+
+    Returns:
+        A clean human-readable report for the federated quantum workload demo.
+    """
+    lines = [
+        "qfl-mini: federated quantum workload demo",
+        "",
+        "Client results:",
+    ]
+
+    for client_result in round_result["client_results"]:
+        lines.append(
+            f"- {client_result['client_id']} | "
+            f"theta={client_result['theta']} | "
+            f"result={client_result['result']:.6f}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Aggregated result:",
+            f"{round_result['aggregated_result']:.6f}",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
+def format_multi_round_report(run_result: dict[str, Any]) -> str:
+    """Format a multi-round coordinator result as a readable text report.
+
+    Args:
+        run_result: Result dictionary returned by ``Coordinator.run_rounds``.
+
+    Returns:
+        A clean human-readable report for repeated coordination rounds.
+    """
+    lines = [
+        "qfl-mini: multi-round federated quantum workload demo",
+        "",
+        "Rounds:",
+    ]
+
+    for round_result in run_result["rounds"]:
+        lines.append(
+            f"- round {round_result['round']} | "
+            f"aggregated_result={round_result['aggregated_result']:.6f}"
+        )
+
+    final_result = run_result["rounds"][-1]["aggregated_result"]
+    lines.extend(
+        [
+            "",
+            "Final aggregated result:",
+            f"{final_result:.6f}",
+        ]
+    )
+
+    return "\n".join(lines)

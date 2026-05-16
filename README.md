@@ -1,0 +1,121 @@
+# qfl-mini
+
+qfl-mini is a minimal execution sandbox for federated quantum-classical workloads.
+
+## What is this?
+
+qfl-mini is a small Python prototype for executing federated quantum workloads with local quantum clients and a classical coordinator.
+
+Each quantum client owns local parameters and runs a simple PennyLane circuit. The classical coordinator collects the local execution results, applies mean aggregation, and produces readable reports. The multi-round demo also writes a JSON artifact so runs can be inspected and reproduced later.
+
+The project is intentionally small. It is meant to make the basic execution, observation, and reproducibility path clear before larger federated quantum infrastructure is added.
+
+## Why this exists
+
+Before Quantum Federated Learning can scale, we need a way to execute, observe, and reproduce federated quantum-classical workloads. qfl-mini is the smallest working prototype of that idea.
+
+## What this is not
+
+qfl-mini is:
+
+* not a Quantum OS
+* not a full QFL framework
+* not a production system
+* not a replacement for PennyLane, Qiskit, Flower, Braket, or Cirq
+* not connected to real quantum hardware yet
+
+## Core concepts
+
+**Quantum Client**
+
+A local quantum execution node. In this prototype, a quantum client is a Python object with a local parameter and a PennyLane circuit execution.
+
+**Classical Coordinator**
+
+The classical coordination layer. It asks each quantum client to run, collects results, and performs aggregation.
+
+**Federated Quantum Workload**
+
+A computation where multiple quantum-capable clients execute local quantum circuits and a classical coordinator aggregates their results without requiring all computation to happen in one centralized quantum process.
+
+**Execution Sandbox**
+
+A small, controlled environment for defining and running a federated quantum workload before adding networking, backend adapters, hardware execution, or experiment services.
+
+**Aggregation**
+
+The process of combining client results. This version implements mean aggregation only.
+
+**Reproducibility Artifact**
+
+A saved file containing run results that can be inspected, shared, and used as a basis for reproducing an execution.
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+## Run the smallest demo
+
+```bash
+python examples/run_two_clients.py
+```
+
+## Run the multi-round demo
+
+```bash
+python examples/run_multi_round.py
+```
+
+This writes:
+
+```text
+runs/demo_multi_round.json
+```
+
+## Development checks
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+python -m compileall qflmini examples
+```
+
+## Current status
+
+Only Phase 0 is implemented.
+
+Implemented:
+
+* local quantum clients
+* simple PennyLane circuit execution
+* classical coordinator
+* mean aggregation
+* one-round report
+* multi-round execution
+* JSON artifact export
+
+Not implemented yet:
+
+* parameter updates
+* training loops
+* noise models
+* non-IID data
+* backend adapters
+* real hardware
+* dashboard
+
+## Roadmap
+
+This public-ready version still belongs to the Phase 0 / early Phase 1 seed.
+
+* Phase 0: minimal federated quantum execution
+* Phase 1: multi-round execution and run history
+* Phase 2: parameter updates
+* Phase 3: federated variational quantum training
+* Phase 4: noise and backend realism
+* Phase 5: experiment manifests
+* Phase 6: backend adapters
+* Phase 7: reproducibility artifacts
+* Phase 8: real hardware integration
