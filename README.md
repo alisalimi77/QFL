@@ -1,4 +1,6 @@
 # qfl-mini
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 qfl-mini is a minimal execution sandbox for federated quantum-classical workloads.
 
