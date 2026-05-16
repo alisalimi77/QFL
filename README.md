@@ -71,6 +71,7 @@ See [docs/architecture.md](docs/architecture.md) for the module layout and execu
 | `run_multi_round.py`      | Repeated coordination with JSON artifact export              | Yes              |
 | `run_parameter_update.py` | Heuristic parameter update with objective/loss tracking      | Yes              |
 | `run_gradient_update.py`  | Finite-difference gradient update with reproducible artifact | Yes              |
+| `run_from_manifest.py`    | Run a gradient update experiment from a JSON manifest        | Yes              |
 
 ## Installation
 
@@ -88,6 +89,28 @@ python examples/run_gradient_update.py
 ```
 
 Artifact-producing examples write timestamped JSON files under `runs/`.
+
+## Run from a JSON manifest
+
+```bash
+python examples/run_from_manifest.py examples/manifests/gradient_update.json
+```
+
+The manifest describes the experiment declaratively:
+
+```json
+{
+  "experiment": "gradient_update",
+  "num_clients": 2,
+  "num_rounds": 3,
+  "initial_theta": 0.5,
+  "learning_rate": 0.1,
+  "target": 0.0,
+  "epsilon": 0.001
+}
+```
+
+This is the first minimal manifest path. Only `gradient_update` manifests are supported for now. JSON only — no YAML, no general config system. Output is still a timestamped artifact under `runs/`.
 
 ## Example output
 
@@ -166,10 +189,13 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - heuristic parameter update demo
 - objective/loss tracking
 - finite-difference gradient update demo
+- JSON manifest v0 for gradient update experiments
 
 **Not implemented yet:**
 
-- experiment manifests
+- YAML manifests
+- manifest support for other experiment types
+- general config/plugin framework
 - backend adapters
 - Qiskit / Braket / Cirq support
 - real hardware execution
@@ -181,9 +207,9 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 ## Roadmap
 
 ```text
-Phase 0: minimal federated quantum execution
-Phase 1: parameter updates, loss tracking, gradient demo, reproducibility artifacts
-Phase 2: experiment manifests
+Phase 0: minimal federated quantum execution                      [done]
+Phase 1: parameter updates, loss tracking, gradient demo          [done]
+Phase 2: experiment manifests (JSON manifest v0 started)          [in progress]
 Phase 3: backend adapters
 Phase 4: noise and backend realism
 Phase 5: richer QFL training examples

@@ -17,6 +17,11 @@ from qflmini.metadata import (
     collect_environment_metadata,
     generate_run_id,
 )
+from qflmini.manifest import (
+    load_gradient_update_manifest,
+    load_json_manifest,
+    validate_gradient_update_manifest,
+)
 from qflmini.optimization import FiniteDifferenceGradientCoordinator, ParameterUpdateCoordinator
 
 
@@ -361,3 +366,132 @@ def test_gradient_coordinator_artifact_save(tmp_path) -> None:
     saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
     assert "run_id" in saved_data
     assert "gradient" in saved_data["run"]["rounds"][0]
+
+
+# --- manifest tests ---
+
+_VALID_MANIFEST = {
+    "experiment": "gradient_update",
+    "num_clients": 2,
+    "num_rounds": 3,
+    "initial_theta": 0.5,
+    "learning_rate": 0.1,
+    "target": 0.0,
+    "epsilon": 0.001,
+}
+
+
+def test_load_json_manifest_returns_dict(tmp_path) -> None:
+    manifest_file = tmp_path / "manifest.json"
+    manifest_file.write_text('{"experiment": "gradient_update"}', encoding="utf-8")
+
+    result = load_json_manifest(manifest_file)
+
+    assert isinstance(result, dict)
+    assert result["experiment"] == "gradient_update"
+
+
+def test_load_json_manifest_rejects_non_object(tmp_path) -> None:
+    manifest_file = tmp_path / "bad.json"
+    manifest_file.write_text("[1, 2, 3]", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="JSON object"):
+        load_json_manifest(manifest_file)
+
+
+def test_validate_gradient_update_manifest_returns_normalized_values() -> None:
+    config = validate_gradient_update_manifest(_VALID_MANIFEST)
+
+    assert config["experiment"] == "gradient_update"
+    assert isinstance(config["num_clients"], int)
+    assert isinstance(config["num_rounds"], int)
+    assert isinstance(config["initial_theta"], float)
+    assert isinstance(config["learning_rate"], float)
+    assert isinstance(config["target"], float)
+    assert isinstance(config["epsilon"], float)
+    assert config["num_clients"] == 2
+    assert config["num_rounds"] == 3
+    assert config["initial_theta"] == 0.5
+    assert config["learning_rate"] == 0.1
+    assert config["target"] == 0.0
+    assert config["epsilon"] == 0.001
+
+
+def test_validate_gradient_update_manifest_missing_field_raises() -> None:
+    bad = dict(_VALID_MANIFEST)
+    del bad["num_rounds"]
+
+    with pytest.raises(ValueError, match="num_rounds"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_gradient_update_manifest_wrong_experiment_raises() -> None:
+    bad = dict(_VALID_MANIFEST, experiment="parameter_update")
+
+    with pytest.raises(ValueError, match="Unsupported experiment type"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_gradient_update_manifest_num_clients_below_one_raises() -> None:
+    bad = dict(_VALID_MANIFEST, num_clients=0)
+
+    with pytest.raises(ValueError, match="num_clients"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_gradient_update_manifest_num_rounds_below_one_raises() -> None:
+    bad = dict(_VALID_MANIFEST, num_rounds=0)
+
+    with pytest.raises(ValueError, match="num_rounds"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_gradient_update_manifest_nonpositive_learning_rate_raises() -> None:
+    bad = dict(_VALID_MANIFEST, learning_rate=0.0)
+
+    with pytest.raises(ValueError, match="learning_rate"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_gradient_update_manifest_nonpositive_epsilon_raises() -> None:
+    bad = dict(_VALID_MANIFEST, epsilon=0.0)
+
+    with pytest.raises(ValueError, match="epsilon"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_load_gradient_update_manifest_loads_and_validates(tmp_path) -> None:
+    import json as _json
+
+    manifest_file = tmp_path / "gradient_update.json"
+    manifest_file.write_text(_json.dumps(_VALID_MANIFEST), encoding="utf-8")
+
+    config = load_gradient_update_manifest(manifest_file)
+
+    assert config["experiment"] == "gradient_update"
+    assert config["num_clients"] == 2
+
+
+def test_manifest_run_artifact_shape(tmp_path) -> None:
+    config = validate_gradient_update_manifest(_VALID_MANIFEST)
+    coordinator = FiniteDifferenceGradientCoordinator(
+        [QuantumClient(client_id=f"client_{i + 1}", theta=0.0) for i in range(config["num_clients"])],
+        initial_theta=config["initial_theta"],
+        learning_rate=config["learning_rate"],
+        target=config["target"],
+        epsilon=config["epsilon"],
+    )
+    update_result = coordinator.run_updates(config["num_rounds"])
+
+    artifact = build_run_artifact(
+        example_name="run_from_manifest_gradient_update",
+        run_result={"manifest": config, "result": update_result},
+    )
+    artifact_path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
+    saved_path = save_json_artifact(artifact, artifact_path)
+
+    saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
+    assert "run_id" in saved_data
+    assert "manifest" in saved_data["run"]
+    assert "result" in saved_data["run"]
+    assert saved_data["run"]["manifest"]["experiment"] == "gradient_update"

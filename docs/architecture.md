@@ -13,6 +13,7 @@ qfl-mini is intentionally small. The design keeps each concern in a separate mod
 | `reporting.py`    | Human-readable report formatters                            |
 | `metadata.py`     | Run ID generation and environment metadata collection       |
 | `artifacts.py`    | JSON artifact path resolution and saving                    |
+| `manifest.py`     | Loading and validating minimal JSON experiment manifests    |
 
 ## Execution flow
 
@@ -46,6 +47,23 @@ save_json_artifact(artifact, artifact_path)
   -> creates runs/ directory if needed
   -> writes JSON with 2-space indentation
   -> returns final path
+```
+
+## Manifest flow
+
+```text
+JSON manifest file
+  -> load_json_manifest()      reads and parses JSON
+  -> validate_gradient_update_manifest()  checks types and constraints
+  -> returns normalized config dict
+
+config dict
+  -> creates QuantumClient objects
+  -> creates FiniteDifferenceGradientCoordinator
+  -> run_updates(num_rounds)
+  -> format_gradient_update_report()
+  -> build_run_artifact({ manifest: config, result: update_result })
+  -> save_json_artifact()
 ```
 
 ## Why the design is intentionally small

@@ -33,9 +33,19 @@ The current project is alpha. Do not rely on API stability between phases.
 
 ## Phase 2 — Experiment manifests
 
-**Status: planned.**
+**Status: started.**
 
-A declarative way to describe an experiment: clients, rounds, initial theta, learning rate, target, epsilon. The goal is to run examples from a manifest file without editing Python.
+Started:
+
+- JSON manifest v0 for finite-difference gradient update experiments
+- `load_gradient_update_manifest()` loads and validates a JSON manifest file
+- `run_from_manifest.py` runs a gradient update experiment from a manifest
+
+Remaining planned items:
+
+- more experiment types (parameter update, multi-round)
+- no YAML support yet
+- no plugin system yet
 
 The Python API stays primary. The manifest format is an optional convenience layer on top of it.
 
