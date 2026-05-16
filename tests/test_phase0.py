@@ -118,10 +118,13 @@ def test_parameter_update_run_updates_returns_three_rounds() -> None:
     assert result["num_rounds"] == 3
     assert result["initial_theta"] == 0.5
     assert result["learning_rate"] == 0.1
+    assert result["target"] == 0.0
     assert "final_theta" in result
     assert "rounds" in result
     assert len(result["rounds"]) == 3
     assert [round_result["round"] for round_result in result["rounds"]] == [1, 2, 3]
+    assert all("target" in round_result for round_result in result["rounds"])
+    assert all("loss" in round_result for round_result in result["rounds"])
 
 
 def test_parameter_update_run_updates_requires_positive_count() -> None:
@@ -151,6 +154,7 @@ def test_save_json_artifact_writes_parameter_update_artifact(tmp_path) -> None:
     saved_data = json.loads(artifact_path.read_text(encoding="utf-8"))
     assert saved_data["initial_theta"] == 0.5
     assert saved_data["learning_rate"] == 0.1
+    assert saved_data["target"] == 0.0
     assert len(saved_data["rounds"]) == 2
 
 
@@ -234,3 +238,34 @@ def test_save_json_artifact_with_run_id_matches_filename(tmp_path) -> None:
 
     saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
     assert saved_data["run_id"] == saved_path.stem
+
+
+def test_parameter_update_loss_matches_target_objective() -> None:
+    coordinator = ParameterUpdateCoordinator(
+        [QuantumClient(client_id="client_1", theta=0.0)],
+        initial_theta=0.5,
+        learning_rate=0.1,
+        target=0.0,
+    )
+
+    result = coordinator.run_updates(1)
+    round_result = result["rounds"][0]
+    expected_loss = (
+        round_result["aggregated_result"] - round_result["target"]
+    ) ** 2
+
+    assert round_result["loss"] == pytest.approx(expected_loss)
+
+
+def test_parameter_update_accepts_nonzero_target() -> None:
+    coordinator = ParameterUpdateCoordinator(
+        [QuantumClient(client_id="client_1", theta=0.0)],
+        initial_theta=0.5,
+        learning_rate=0.1,
+        target=0.5,
+    )
+
+    result = coordinator.run_updates(1)
+
+    assert result["target"] == 0.5
+    assert result["rounds"][0]["target"] == 0.5

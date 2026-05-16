@@ -23,6 +23,7 @@ def main() -> None:
         clients=clients,
         initial_theta=0.5,
         learning_rate=0.1,
+        target=0.0,
     )
     update_result = coordinator.run_updates(3)
     print(format_parameter_update_report(update_result))

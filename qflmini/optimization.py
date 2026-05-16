@@ -20,6 +20,7 @@ class ParameterUpdateCoordinator:
         clients: list[QuantumClient],
         initial_theta: float,
         learning_rate: float,
+        target: float = 0.0,
     ) -> None:
         if not clients:
             raise ValueError(
@@ -31,6 +32,7 @@ class ParameterUpdateCoordinator:
         self.clients = clients
         self.initial_theta = initial_theta
         self.learning_rate = learning_rate
+        self.target = target
 
     def run_updates(self, num_rounds: int) -> dict[str, Any]:
         """Run repeated federated quantum execution with scalar updates.
@@ -59,6 +61,7 @@ class ParameterUpdateCoordinator:
             client_results = [client.run() for client in round_clients]
             result_values = [client_result["result"] for client_result in client_results]
             aggregated_result = sum(result_values) / len(result_values)
+            loss = (aggregated_result - self.target) ** 2
             next_theta = theta - self.learning_rate * aggregated_result
 
             rounds.append(
@@ -67,6 +70,8 @@ class ParameterUpdateCoordinator:
                     "theta": theta,
                     "client_results": client_results,
                     "aggregated_result": aggregated_result,
+                    "target": self.target,
+                    "loss": loss,
                     "next_theta": next_theta,
                 }
             )
@@ -78,6 +83,7 @@ class ParameterUpdateCoordinator:
             "num_rounds": num_rounds,
             "initial_theta": self.initial_theta,
             "learning_rate": self.learning_rate,
+            "target": self.target,
             "final_theta": theta,
             "rounds": rounds,
         }

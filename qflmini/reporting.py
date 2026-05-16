@@ -92,6 +92,8 @@ def format_parameter_update_report(update_result: dict[str, Any]) -> str:
             f"- round {round_result['round']} | "
             f"theta={round_result['theta']:.6f} | "
             f"aggregated_result={round_result['aggregated_result']:.6f} | "
+            f"target={round_result['target']:.6f} | "
+            f"loss={round_result['loss']:.6f} | "
             f"next_theta={round_result['next_theta']:.6f}"
         )
 

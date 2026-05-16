@@ -90,6 +90,21 @@ This writes:
 runs/run_parameter_update_<timestamp>.json
 ```
 
+The parameter update demo also tracks a simple objective value:
+
+```text
+loss = (aggregated_result - target)^2
+```
+
+The update rule remains intentionally simple:
+
+```text
+next_theta = theta - learning_rate * aggregated_result
+```
+
+This is objective tracking only. It is not gradient-based training and it is
+not a real optimizer yet.
+
 ## Reproducibility artifacts
 
 Saved artifacts include:
@@ -126,7 +141,17 @@ Example structure:
   },
   "run": {
     "num_rounds": 3,
-    "final_theta": 0.225715
+    "final_theta": 0.225715,
+    "rounds": [
+      {
+        "round": 1,
+        "theta": 0.5,
+        "aggregated_result": 0.877583,
+        "target": 0.0,
+        "loss": 0.770151,
+        "next_theta": 0.412242
+      }
+    ]
   }
 }
 ```
@@ -158,6 +183,7 @@ Implemented:
 * reproducibility metadata in saved artifacts
 * run IDs for saved artifacts
 * non-overwriting artifact filenames
+* simple objective/loss tracking for parameter update runs
 
 Not implemented yet:
 
