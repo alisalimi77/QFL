@@ -74,6 +74,12 @@ A timestamped JSON file written by artifact-producing examples. It contains:
 
 Artifacts are designed to be inspectable by humans and machines without any special tooling beyond a JSON reader.
 
+## Experiment Manifest
+
+A manifest is a small JSON file that declares the parameters for a supported experiment — number of clients, rounds, initial theta, learning rate, target, and epsilon. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.
+
+In the current version, manifests are limited to finite-difference gradient update experiments. Multiple example manifests live under `examples/manifests/` to show how different parameter settings can be declared and compared.
+
 ## Run ID
 
 A unique identifier for each run. It is derived from the example name and a UTC timestamp:

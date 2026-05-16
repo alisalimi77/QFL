@@ -112,6 +112,19 @@ The manifest describes the experiment declaratively:
 
 This is the first minimal manifest path. Only `gradient_update` manifests are supported for now. JSON only — no YAML, no general config system. Output is still a timestamped artifact under `runs/`.
 
+Several example manifests are provided to show how different parameter settings can be declared without changing Python code:
+
+| Manifest                             | What changes        |
+| ------------------------------------ | ------------------- |
+| `gradient_update.json`               | Default settings    |
+| `gradient_update_low_lr.json`        | Lower learning rate |
+| `gradient_update_target_half.json`   | Non-zero target     |
+| `gradient_update_more_rounds.json`   | More rounds         |
+
+```bash
+python examples/run_from_manifest.py examples/manifests/gradient_update_low_lr.json
+```
+
 ## Example output
 
 ```text
@@ -190,6 +203,7 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - objective/loss tracking
 - finite-difference gradient update demo
 - JSON manifest v0 for gradient update experiments
+- multiple example manifests for `gradient_update`
 
 **Not implemented yet:**
 

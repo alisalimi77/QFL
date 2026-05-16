@@ -40,6 +40,7 @@ Started:
 - JSON manifest v0 for finite-difference gradient update experiments
 - `load_gradient_update_manifest()` loads and validates a JSON manifest file
 - `run_from_manifest.py` runs a gradient update experiment from a manifest
+- multiple example manifests showing different parameter settings (`learning_rate`, `target`, `num_rounds`)
 
 Remaining planned items:
 

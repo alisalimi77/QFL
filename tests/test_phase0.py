@@ -495,3 +495,16 @@ def test_manifest_run_artifact_shape(tmp_path) -> None:
     assert "manifest" in saved_data["run"]
     assert "result" in saved_data["run"]
     assert saved_data["run"]["manifest"]["experiment"] == "gradient_update"
+
+
+def test_all_example_manifests_are_valid() -> None:
+    manifest_dir = Path(__file__).resolve().parents[1] / "examples" / "manifests"
+    manifest_files = sorted(manifest_dir.glob("*.json"))
+
+    assert len(manifest_files) > 0, "No manifest files found in examples/manifests/"
+
+    for manifest_file in manifest_files:
+        config = load_gradient_update_manifest(manifest_file)
+        assert config["experiment"] == "gradient_update", (
+            f"{manifest_file.name}: expected experiment='gradient_update'"
+        )
