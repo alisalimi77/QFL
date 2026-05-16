@@ -16,7 +16,16 @@ def save_json_artifact(data: dict[str, Any], path: str | Path) -> Path:
 
     Returns:
         The final artifact path.
+
+    Raises:
+        TypeError: If ``data`` is not a dictionary or ``path`` is not a string
+            or ``Path``.
     """
+    if not isinstance(data, dict):
+        raise TypeError("data must be a dictionary.")
+    if not isinstance(path, (str, Path)):
+        raise TypeError("path must be a string or Path.")
+
     artifact_path = Path(path)
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
     artifact_path.write_text(

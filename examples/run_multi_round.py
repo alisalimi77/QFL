@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from qflmini.artifacts import save_json_artifact
 from qflmini.client import QuantumClient
 from qflmini.coordinator import Coordinator
+from qflmini.metadata import build_run_artifact
 from qflmini.reporting import format_multi_round_report
 
 
@@ -22,7 +23,11 @@ def main() -> None:
     run_result = coordinator.run_rounds(3)
     print(format_multi_round_report(run_result))
 
-    artifact_path = save_json_artifact(run_result, "runs/demo_multi_round.json")
+    artifact = build_run_artifact(
+        example_name="run_multi_round",
+        run_result=run_result,
+    )
+    artifact_path = save_json_artifact(artifact, "runs/demo_multi_round.json")
     print(f"Saved artifact: {artifact_path.as_posix()}")
 
 

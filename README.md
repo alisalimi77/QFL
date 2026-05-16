@@ -8,7 +8,7 @@ qfl-mini is a minimal execution sandbox for federated quantum-classical workload
 
 qfl-mini is a small Python prototype for executing federated quantum workloads with local quantum clients and a classical coordinator.
 
-Each quantum client owns local parameters and runs a simple PennyLane circuit. The classical coordinator collects the local execution results, applies mean aggregation, and produces readable reports. The demos also write JSON artifacts so runs can be inspected and reproduced later.
+Each quantum client owns local parameters and runs a simple PennyLane circuit. The classical coordinator collects the local execution results, applies mean aggregation, and produces readable reports. The demos also write JSON artifacts with lightweight reproducibility metadata so runs can be inspected and reproduced later.
 
 The project is intentionally small. It is meant to make the basic execution, observation, and reproducibility path clear before larger federated quantum infrastructure is added.
 
@@ -52,7 +52,7 @@ The process of combining client results. This version implements mean aggregatio
 
 **Reproducibility Artifact**
 
-A saved file containing run results that can be inspected, shared, and used as a basis for reproducing an execution.
+A saved JSON file containing run results and lightweight metadata that can be inspected, shared, and used as a basis for reproducing an execution.
 
 ## Installation
 
@@ -90,6 +90,43 @@ This writes:
 runs/demo_parameter_update.json
 ```
 
+## Reproducibility artifacts
+
+Saved artifacts include:
+
+* project name
+* artifact version
+* timestamp
+* example name
+* Python version
+* platform, system, and machine
+* PennyLane version
+* run results
+
+Example structure:
+
+```json
+{
+  "project": "qfl-mini",
+  "artifact_version": "0.1",
+  "created_at": "...",
+  "example": "run_parameter_update",
+  "environment": {
+    "python_version": "...",
+    "platform": "...",
+    "system": "...",
+    "machine": "...",
+    "pennylane_version": "..."
+  },
+  "run": {
+    "num_rounds": 3,
+    "final_theta": 0.225715
+  }
+}
+```
+
+This is intentionally lightweight. qfl-mini does not implement a full experiment tracking system.
+
 ## Development checks
 
 ```bash
@@ -112,9 +149,11 @@ Implemented:
 * multi-round execution
 * JSON artifact export
 * minimal parameter update loop
+* reproducibility metadata in saved artifacts
 
 Not implemented yet:
 
+* full experiment tracking
 * full QFL training
 * gradient-based optimization
 * training loops

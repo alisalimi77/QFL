@@ -11,6 +11,7 @@ import pytest
 from qflmini.artifacts import save_json_artifact
 from qflmini.client import QuantumClient
 from qflmini.coordinator import Coordinator
+from qflmini.metadata import build_run_artifact, collect_environment_metadata
 from qflmini.optimization import ParameterUpdateCoordinator
 
 
@@ -146,3 +147,46 @@ def test_save_json_artifact_writes_parameter_update_artifact(tmp_path) -> None:
     assert saved_data["initial_theta"] == 0.5
     assert saved_data["learning_rate"] == 0.1
     assert len(saved_data["rounds"]) == 2
+
+
+def test_collect_environment_metadata_returns_expected_keys() -> None:
+    metadata = collect_environment_metadata()
+
+    assert set(metadata) == {
+        "python_version",
+        "platform",
+        "system",
+        "machine",
+        "pennylane_version",
+    }
+
+
+def test_build_run_artifact_returns_metadata_wrapper() -> None:
+    artifact = build_run_artifact("example_name", {"ok": True})
+
+    assert artifact["project"] == "qfl-mini"
+    assert artifact["artifact_version"] == "0.1"
+    assert artifact["example"] == "example_name"
+    assert "created_at" in artifact
+    assert "environment" in artifact
+    assert artifact["run"] == {"ok": True}
+
+
+def test_build_run_artifact_requires_example_name() -> None:
+    with pytest.raises(ValueError, match="example_name must not be empty"):
+        build_run_artifact("", {"ok": True})
+
+
+def test_build_run_artifact_requires_run_result_dict() -> None:
+    with pytest.raises(TypeError, match="run_result must be a dictionary"):
+        build_run_artifact("example_name", "not a dict")
+
+
+def test_save_json_artifact_writes_metadata_artifact(tmp_path) -> None:
+    artifact = build_run_artifact("example_name", {"ok": True})
+
+    artifact_path = save_json_artifact(artifact, tmp_path / "artifact.json")
+
+    saved_data = json.loads(artifact_path.read_text(encoding="utf-8"))
+    assert saved_data["project"] == "qfl-mini"
+    assert saved_data["run"] == {"ok": True}

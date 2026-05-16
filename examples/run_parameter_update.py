@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from qflmini.artifacts import save_json_artifact
 from qflmini.client import QuantumClient
+from qflmini.metadata import build_run_artifact
 from qflmini.optimization import ParameterUpdateCoordinator
 from qflmini.reporting import format_parameter_update_report
 
@@ -26,10 +27,11 @@ def main() -> None:
     update_result = coordinator.run_updates(3)
     print(format_parameter_update_report(update_result))
 
-    artifact_path = save_json_artifact(
-        update_result,
-        "runs/demo_parameter_update.json",
+    artifact = build_run_artifact(
+        example_name="run_parameter_update",
+        run_result=update_result,
     )
+    artifact_path = save_json_artifact(artifact, "runs/demo_parameter_update.json")
     print(f"Saved artifact: {artifact_path.as_posix()}")
 
 
