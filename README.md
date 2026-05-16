@@ -1,61 +1,76 @@
 # qfl-mini
+
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 
-qfl-mini is a minimal execution sandbox for federated quantum-classical workloads.
+A minimal execution sandbox for federated quantum-classical workloads.
 
-## What is this?
+## What is qfl-mini?
 
-qfl-mini is a small Python prototype for executing federated quantum workloads with local quantum clients and a classical coordinator.
+qfl-mini is a small Python prototype that demonstrates how multiple quantum-capable clients can execute local quantum circuits while a classical coordinator aggregates their results.
 
-Each quantum client owns local parameters and runs a simple PennyLane circuit. The classical coordinator collects the local execution results, applies mean aggregation, and produces readable reports. The demos also write JSON artifacts with lightweight reproducibility metadata so runs can be inspected and reproduced later.
+Each quantum client owns a local parameter and runs a simple PennyLane circuit. The coordinator collects outputs, applies mean aggregation, and drives repeated rounds or parameter updates. Artifact-producing examples write timestamped JSON files that record the run trace and environment metadata so executions can be inspected and reproduced later.
 
-The project is intentionally small. It is meant to make the basic execution, observation, and reproducibility path clear before larger federated quantum infrastructure is added.
+The project is intentionally small. It is a research-infrastructure seed, not a framework. The goal is to make the basic execution, observation, and reproducibility path clear before larger federated quantum infrastructure is introduced.
 
 ## Why this exists
 
-Before Quantum Federated Learning can scale, we need a way to execute, observe, and reproduce federated quantum-classical workloads. qfl-mini is the smallest working prototype of that idea.
+Before Quantum Federated Learning can scale, we need simple ways to execute, observe, and reproduce federated quantum-classical workloads. qfl-mini explores the smallest working building blocks for that direction: local circuit execution, classical coordination, mean aggregation, loss tracking, and reproducibility artifacts.
 
 ## What this is not
 
-qfl-mini is:
+- not a Quantum OS
+- not a full Quantum Federated Learning framework
+- not a production system
+- not a replacement for PennyLane, Qiskit, Flower, Braket, or Cirq
+- not connected to real quantum hardware yet
+- not FedAvg
+- not dataset-based training
+- not an experiment tracking platform
 
-* not a Quantum OS
-* not a full QFL framework
-* not full QFL training
-* not a full optimizer framework
-* not FedAvg
-* not dataset-based training
-* not automatic differentiation-based training yet
-* not a production system
-* not a replacement for PennyLane, Qiskit, Flower, Braket, or Cirq
-* not connected to real quantum hardware yet
+## Core ideas
 
-## Core concepts
+**Quantum Client** — a local execution node. In this prototype, a Python object with a local parameter and a PennyLane circuit.
 
-**Quantum Client**
+**Classical Coordinator** — collects client outputs, applies aggregation, and drives repeated rounds or parameter updates.
 
-A local quantum execution node. In this prototype, a quantum client is a Python object with a local parameter and a PennyLane circuit execution.
+**Federated Quantum Workload** — a computation where multiple quantum-capable clients execute local circuits and a classical coordinator aggregates results without centralising all computation in one quantum process.
 
-**Classical Coordinator**
+**Execution Sandbox** — a controlled environment for trying coordination patterns before adding networking, backend adapters, or hardware execution.
 
-The classical coordination layer. It asks each quantum client to run, collects results, and performs aggregation.
+**Aggregation** — combining client results. Currently mean aggregation only.
 
-**Federated Quantum Workload**
+**Objective / Loss Tracking** — each parameter update round computes a simple squared loss so progress is observable.
 
-A computation where multiple quantum-capable clients execute local quantum circuits and a classical coordinator aggregates their results without requiring all computation to happen in one centralized quantum process.
+**Reproducibility Artifact** — a timestamped JSON file containing the run trace and environment metadata.
 
-**Execution Sandbox**
+**Run ID** — a unique identifier derived from the example name and a UTC timestamp. The artifact filename matches the run ID so repeated runs never overwrite each other.
 
-A small, controlled environment for defining and running a federated quantum workload before adding networking, backend adapters, hardware execution, or experiment services.
+See [docs/concepts.md](docs/concepts.md) for fuller explanations.
 
-**Aggregation**
+## Architecture overview
 
-The process of combining client results. This version implements mean aggregation only.
+```mermaid
+flowchart LR
+    C1[Quantum Client 1] --> CO[Classical Coordinator]
+    C2[Quantum Client 2] --> CO
+    CO --> AGG[Aggregation]
+    AGG --> REP[Report]
+    AGG --> ART[Reproducibility Artifact]
+```
 
-**Reproducibility Artifact**
+Clients run local PennyLane circuits. The coordinator aggregates outputs. Reports make results readable; artifacts make them reproducible.
 
-A saved JSON file containing run results and lightweight metadata that can be inspected, shared, and used as a basis for reproducing an execution.
+See [docs/architecture.md](docs/architecture.md) for the module layout and execution flow.
+
+## Example progression
+
+| Example                   | Purpose                                                      | Writes artifact? |
+| ------------------------- | ------------------------------------------------------------ | ---------------- |
+| `run_two_clients.py`      | Minimal one-round federated quantum execution                | No               |
+| `run_multi_round.py`      | Repeated coordination with JSON artifact export              | Yes              |
+| `run_parameter_update.py` | Heuristic parameter update with objective/loss tracking      | Yes              |
+| `run_gradient_update.py`  | Finite-difference gradient update with reproducible artifact | Yes              |
 
 ## Installation
 
@@ -63,125 +78,62 @@ A saved JSON file containing run results and lightweight metadata that can be in
 pip install -r requirements.txt
 ```
 
-## Run the smallest demo
+## Run examples
 
 ```bash
 python examples/run_two_clients.py
-```
-
-## Run the multi-round demo
-
-```bash
 python examples/run_multi_round.py
-```
-
-This writes:
-
-```text
-runs/run_multi_round_<timestamp>.json
-```
-
-## Run the parameter update demo
-
-```bash
 python examples/run_parameter_update.py
-```
-
-This writes:
-
-```text
-runs/run_parameter_update_<timestamp>.json
-```
-
-The parameter update demo tracks a simple objective value:
-
-```text
-loss = (aggregated_result - target)^2
-```
-
-The update rule is intentionally simple:
-
-```text
-next_theta = theta - learning_rate * aggregated_result
-```
-
-This is objective tracking only. It is not gradient-based training.
-
-## Run the gradient update demo
-
-```bash
 python examples/run_gradient_update.py
 ```
 
-This writes:
+Artifact-producing examples write timestamped JSON files under `runs/`.
+
+## Example output
 
 ```text
-runs/run_gradient_update_<timestamp>.json
+qfl-mini: finite-difference gradient update demo
+
+Rounds:
+- round 1 | theta=0.500000 | loss=0.770151 | gradient=-0.841470 | next_theta=0.584147
+- round 2 | theta=0.584147 | loss=0.695861 | gradient=-0.920083 | next_theta=0.676155
+- round 3 | theta=0.676155 | loss=0.608376 | gradient=-0.976226 | next_theta=0.773778
+
+Final theta:
+0.773778
+Saved artifact: runs/run_gradient_update_<timestamp>.json
 ```
-
-The gradient update demo estimates a gradient using central finite differences:
-
-```text
-gradient ≈ (loss(theta + epsilon) - loss(theta - epsilon)) / (2 * epsilon)
-```
-
-It updates the parameter with:
-
-```text
-next_theta = theta - learning_rate * gradient
-```
-
-This is still not full QFL training. It is not PennyLane autograd. It is a
-minimal gradient-based optimization trace built on the existing execution,
-aggregation, and artifact system.
 
 ## Reproducibility artifacts
 
-Saved artifacts include:
+Each artifact-producing example writes a JSON file under `runs/` with a unique `run_id`. The filename matches the `run_id`, so repeated runs do not overwrite each other.
 
-* project name
-* artifact version
-* run ID
-* timestamp
-* example name
-* Python version
-* platform, system, and machine
-* PennyLane version
-* run results
+Artifacts include:
 
-Each artifact has a unique `run_id`. The artifact filename is derived from
-that `run_id`, so repeated runs do not overwrite previous artifacts. The JSON
-artifact includes the same top-level `run_id` for traceability.
+- project name and artifact version
+- run ID and timestamp
+- example name
+- environment metadata (Python version, platform, PennyLane version)
+- full run trace
 
-Example structure:
+Example shape:
 
 ```json
 {
   "project": "qfl-mini",
   "artifact_version": "0.1",
-  "run_id": "run_parameter_update_20260516T203956Z",
-  "created_at": "...",
-  "example": "run_parameter_update",
+  "run_id": "run_gradient_update_20260516T205502Z",
+  "created_at": "2026-05-16T20:55:02Z",
+  "example": "run_gradient_update",
   "environment": {
-    "python_version": "...",
+    "python_version": "3.12.6",
     "platform": "...",
-    "system": "...",
-    "machine": "...",
-    "pennylane_version": "..."
+    "pennylane_version": "0.45.0"
   },
   "run": {
     "num_rounds": 3,
-    "final_theta": 0.225715,
-    "rounds": [
-      {
-        "round": 1,
-        "theta": 0.5,
-        "aggregated_result": 0.877583,
-        "target": 0.0,
-        "loss": 0.770151,
-        "next_theta": 0.412242
-      }
-    ]
+    "epsilon": 0.001,
+    "final_theta": 0.773778
   }
 }
 ```
@@ -198,49 +150,44 @@ python -m compileall qflmini examples
 
 ## Current status
 
-Only Phase 0 and a small Phase 1 seed are implemented.
+Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 
-Implemented:
+**Implemented:**
 
-* local quantum clients
-* simple PennyLane circuit execution
-* classical coordinator
-* mean aggregation
-* one-round report
-* multi-round execution
-* JSON artifact export
-* minimal parameter update loop
-* reproducibility metadata in saved artifacts
-* run IDs for saved artifacts
-* non-overwriting artifact filenames
-* simple objective/loss tracking for parameter update runs
-* finite-difference gradient update demo
+- local quantum clients
+- PennyLane-based circuit execution
+- classical coordinator
+- mean aggregation
+- one-round execution and report
+- multi-round execution
+- JSON artifact export
+- reproducibility metadata
+- run IDs and non-overwriting artifact filenames
+- heuristic parameter update demo
+- objective/loss tracking
+- finite-difference gradient update demo
 
-Not implemented yet:
+**Not implemented yet:**
 
-* full experiment tracking
-* full QFL training
-* full optimizer framework
-* FedAvg
-* dataset-based training
-* automatic differentiation-based training
-* training loops
-* noise models
-* non-IID data
-* backend adapters
-* real hardware
-* dashboard
+- experiment manifests
+- backend adapters
+- Qiskit / Braket / Cirq support
+- real hardware execution
+- datasets
+- FedAvg
+- full QFL training
+- dashboard or experiment tracking server
 
 ## Roadmap
 
-This version still belongs to the Phase 0 / early Phase 1 seed. The parameter update loop and the finite-difference gradient update are Phase 1 seeds, not a full training framework.
+```text
+Phase 0: minimal federated quantum execution
+Phase 1: parameter updates, loss tracking, gradient demo, reproducibility artifacts
+Phase 2: experiment manifests
+Phase 3: backend adapters
+Phase 4: noise and backend realism
+Phase 5: richer QFL training examples
+Phase 6: optional real hardware integration
+```
 
-* Phase 0: minimal federated quantum execution
-* Phase 1: multi-round execution, run history, minimal parameter update loop, and finite-difference gradient update (Phase 1.4 seed)
-* Phase 2: parameter updates
-* Phase 3: federated variational quantum training
-* Phase 4: noise and backend realism
-* Phase 5: experiment manifests
-* Phase 6: backend adapters
-* Phase 7: reproducibility artifacts
-* Phase 8: real hardware integration
+See [docs/roadmap.md](docs/roadmap.md) for the staged roadmap.
