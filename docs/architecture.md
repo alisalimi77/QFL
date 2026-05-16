@@ -4,16 +4,17 @@ qfl-mini is intentionally small. The design keeps each concern in a separate mod
 
 ## Module layout
 
-| Module            | Role                                                        |
-| ----------------- | ----------------------------------------------------------- |
-| `circuits.py`     | PennyLane circuit definition and execution                  |
-| `client.py`       | Quantum client abstraction (`QuantumClient`)                |
-| `coordinator.py`  | Basic multi-round coordination and mean aggregation         |
-| `optimization.py` | Parameter and gradient update coordinators                  |
-| `reporting.py`    | Human-readable report formatters                            |
-| `metadata.py`     | Run ID generation and environment metadata collection       |
-| `artifacts.py`    | JSON artifact path resolution and saving                    |
-| `manifest.py`     | Loading and validating minimal JSON experiment manifests    |
+| Module            | Role                                                            |
+| ----------------- | --------------------------------------------------------------- |
+| `circuits.py`     | PennyLane circuit definition and execution                      |
+| `client.py`       | Quantum client abstraction (`QuantumClient`)                    |
+| `coordinator.py`  | Basic multi-round coordination and mean aggregation             |
+| `optimization.py` | Parameter and gradient update coordinators                      |
+| `reporting.py`    | Human-readable report formatters                                |
+| `metadata.py`     | Run ID generation and environment metadata collection           |
+| `artifacts.py`    | JSON artifact path resolution and saving                        |
+| `manifest.py`     | Loading and validating minimal JSON experiment manifests        |
+| `comparison.py`   | Loading, summarizing, and formatting saved artifact comparisons |
 
 ## Execution flow
 
@@ -64,6 +65,15 @@ config dict
   -> format_gradient_update_report()
   -> build_run_artifact({ manifest: config, result: update_result })
   -> save_json_artifact()
+```
+
+## Comparison flow
+
+```text
+Saved artifact files
+  -> load_artifact()          reads and validates JSON
+  -> summarize_artifact()     extracts run_id, experiment, num_rounds, final_theta, final_loss
+  -> format_artifact_comparison()  produces a plain text summary table
 ```
 
 ## Why the design is intentionally small

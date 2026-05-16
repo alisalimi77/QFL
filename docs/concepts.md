@@ -74,6 +74,12 @@ A timestamped JSON file written by artifact-producing examples. It contains:
 
 Artifacts are designed to be inspectable by humans and machines without any special tooling beyond a JSON reader.
 
+## Artifact Comparison
+
+Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts a few summary fields (run ID, experiment, rounds, final theta, final loss), and prints a plain text table.
+
+It is intentionally plain text and dependency-free. It is not a dashboard, not a plotting tool, and not an experiment tracking server.
+
 ## Experiment Manifest
 
 A manifest is a small JSON file that declares the parameters for a supported experiment — number of clients, rounds, initial theta, learning rate, target, and epsilon. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.

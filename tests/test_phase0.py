@@ -17,6 +17,12 @@ from qflmini.metadata import (
     collect_environment_metadata,
     generate_run_id,
 )
+from qflmini.comparison import (
+    format_artifact_comparison,
+    load_artifact,
+    summarize_artifact,
+    summarize_artifacts,
+)
 from qflmini.manifest import (
     load_gradient_update_manifest,
     load_json_manifest,
@@ -508,3 +514,135 @@ def test_all_example_manifests_are_valid() -> None:
         assert config["experiment"] == "gradient_update", (
             f"{manifest_file.name}: expected experiment='gradient_update'"
         )
+
+
+# --- comparison tests ---
+
+_DIRECT_ARTIFACT = {
+    "run_id": "run_gradient_update_20260101T000000Z",
+    "example": "run_gradient_update",
+    "run": {
+        "num_rounds": 3,
+        "final_theta": 0.773778,
+        "rounds": [
+            {"loss": 0.770151},
+            {"loss": 0.695861},
+            {"loss": 0.608376},
+        ],
+    },
+}
+
+_MANIFEST_ARTIFACT = {
+    "run_id": "run_from_manifest_gradient_update_20260101T000001Z",
+    "example": "run_from_manifest_gradient_update",
+    "run": {
+        "manifest": {
+            "experiment": "gradient_update",
+            "num_rounds": 5,
+        },
+        "result": {
+            "num_rounds": 5,
+            "final_theta": 0.972194,
+            "rounds": [
+                {"loss": 0.770151},
+                {"loss": 0.695861},
+                {"loss": 0.608376},
+                {"loss": 0.511619},
+                {"loss": 0.412106},
+            ],
+        },
+    },
+}
+
+
+def test_load_artifact_returns_dict(tmp_path) -> None:
+    artifact_file = tmp_path / "artifact.json"
+    artifact_file.write_text(json.dumps(_DIRECT_ARTIFACT), encoding="utf-8")
+
+    result = load_artifact(artifact_file)
+
+    assert isinstance(result, dict)
+    assert result["run_id"] == _DIRECT_ARTIFACT["run_id"]
+
+
+def test_load_artifact_rejects_non_object(tmp_path) -> None:
+    artifact_file = tmp_path / "bad.json"
+    artifact_file.write_text("[1, 2, 3]", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="JSON object"):
+        load_artifact(artifact_file)
+
+
+def test_summarize_artifact_direct_shape() -> None:
+    summary = summarize_artifact(_DIRECT_ARTIFACT)
+
+    assert summary["run_id"] == "run_gradient_update_20260101T000000Z"
+    assert summary["example"] == "run_gradient_update"
+    assert summary["experiment"] == "gradient_update"
+    assert summary["num_rounds"] == 3
+    assert summary["final_theta"] == pytest.approx(0.773778)
+    assert summary["final_loss"] == pytest.approx(0.608376)
+
+
+def test_summarize_artifact_manifest_shape() -> None:
+    summary = summarize_artifact(_MANIFEST_ARTIFACT)
+
+    assert summary["experiment"] == "gradient_update"
+    assert summary["num_rounds"] == 5
+    assert summary["final_theta"] == pytest.approx(0.972194)
+    assert summary["final_loss"] == pytest.approx(0.412106)
+
+
+def test_summarize_artifact_handles_missing_fields() -> None:
+    summary = summarize_artifact({})
+
+    assert summary["run_id"] == "unknown"
+    assert summary["example"] == "unknown"
+    assert summary["experiment"] == "unknown"
+    assert summary["num_rounds"] is None
+    assert summary["final_theta"] is None
+    assert summary["final_loss"] is None
+
+
+def test_summarize_artifacts_preserves_order() -> None:
+    summaries = summarize_artifacts_from_dicts = [
+        summarize_artifact(_DIRECT_ARTIFACT),
+        summarize_artifact(_MANIFEST_ARTIFACT),
+    ]
+
+    assert summaries[0]["run_id"] == _DIRECT_ARTIFACT["run_id"]
+    assert summaries[1]["run_id"] == _MANIFEST_ARTIFACT["run_id"]
+
+
+def test_summarize_artifacts_list(tmp_path) -> None:
+    file_a = tmp_path / "a.json"
+    file_b = tmp_path / "b.json"
+    file_a.write_text(json.dumps(_DIRECT_ARTIFACT), encoding="utf-8")
+    file_b.write_text(json.dumps(_MANIFEST_ARTIFACT), encoding="utf-8")
+
+    summaries = summarize_artifacts([file_a, file_b])
+
+    assert len(summaries) == 2
+    assert summaries[0]["run_id"] == _DIRECT_ARTIFACT["run_id"]
+    assert summaries[1]["run_id"] == _MANIFEST_ARTIFACT["run_id"]
+
+
+def test_format_artifact_comparison_contains_expected_content() -> None:
+    summaries = [
+        summarize_artifact(_DIRECT_ARTIFACT),
+        summarize_artifact(_MANIFEST_ARTIFACT),
+    ]
+
+    output = format_artifact_comparison(summaries)
+
+    assert "qfl-mini: artifact comparison" in output
+    assert "run_gradient_update" in output
+    assert "0.773778" in output
+    assert "0.608376" in output
+    assert "0.972194" in output
+    assert "0.412106" in output
+
+
+def test_format_artifact_comparison_empty_raises() -> None:
+    with pytest.raises(ValueError, match="empty"):
+        format_artifact_comparison([])

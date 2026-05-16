@@ -125,6 +125,26 @@ Several example manifests are provided to show how different parameter settings 
 python examples/run_from_manifest.py examples/manifests/gradient_update_low_lr.json
 ```
 
+## Compare artifacts
+
+After generating artifacts from multiple runs, compare them in one command:
+
+```bash
+python examples/compare_artifacts.py runs/file1.json runs/file2.json
+```
+
+Example output:
+
+```text
+qfl-mini: artifact comparison
+
+run_id                                          example                             experiment       rounds  final_theta  final_loss
+run_from_manifest_gradient_update_...           run_from_manifest_gradient_upda...  gradient_update  3       0.773778     0.608376
+run_from_manifest_gradient_update_...           run_from_manifest_gradient_upda...  gradient_update  5       0.972194     0.412106
+```
+
+This is a lightweight comparison helper — no dashboard, no database, no plotting.
+
 ## Example output
 
 ```text
@@ -204,12 +224,15 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - finite-difference gradient update demo
 - JSON manifest v0 for gradient update experiments
 - multiple example manifests for `gradient_update`
+- dependency-free artifact comparison helper
 
 **Not implemented yet:**
 
 - YAML manifests
 - manifest support for other experiment types
 - general config/plugin framework
+- richer artifact comparison
+- dashboard or plotting tools
 - backend adapters
 - Qiskit / Braket / Cirq support
 - real hardware execution

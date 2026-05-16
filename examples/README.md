@@ -7,6 +7,7 @@
 | `run_parameter_update.py` | Heuristic parameter update + loss tracking              | Yes              |
 | `run_gradient_update.py`  | Finite-difference gradient update                       | Yes              |
 | `run_from_manifest.py`    | Runs a supported experiment from a JSON manifest        | Yes              |
+| `compare_artifacts.py`    | Compares saved JSON artifacts from multiple runs        | No               |
 
 ## Run
 
@@ -37,6 +38,23 @@ python examples/run_from_manifest.py examples/manifests/gradient_update.json
 ```
 
 The examples form a progression from the simplest possible execution toward a minimal gradient-based optimization trace. They are demos, not a training framework.
+
+## Compare artifacts
+
+First generate some artifacts:
+
+```bash
+python examples/run_from_manifest.py examples/manifests/gradient_update.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_more_rounds.json
+```
+
+Then compare them:
+
+```bash
+python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
+```
+
+`compare_artifacts.py` is dependency-free. It prints run_id, example, experiment, rounds, final_theta, and final_loss for each artifact in a plain text table. It is not a dashboard or experiment tracking system.
 
 ## Manifest examples
 

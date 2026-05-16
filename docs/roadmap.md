@@ -41,12 +41,15 @@ Started:
 - `load_gradient_update_manifest()` loads and validates a JSON manifest file
 - `run_from_manifest.py` runs a gradient update experiment from a manifest
 - multiple example manifests showing different parameter settings (`learning_rate`, `target`, `num_rounds`)
+- simple dependency-free artifact comparison helper (`comparison.py`, `compare_artifacts.py`)
 
 Remaining planned items:
 
 - more experiment types (parameter update, multi-round)
+- richer artifact comparison later
 - no YAML support yet
 - no plugin system yet
+- no dashboard or plotting yet
 
 The Python API stays primary. The manifest format is an optional convenience layer on top of it.
 
