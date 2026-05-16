@@ -75,7 +75,7 @@ python examples/run_multi_round.py
 This writes:
 
 ```text
-runs/demo_multi_round.json
+runs/run_multi_round_<timestamp>.json
 ```
 
 ## Run the parameter update demo
@@ -87,7 +87,7 @@ python examples/run_parameter_update.py
 This writes:
 
 ```text
-runs/demo_parameter_update.json
+runs/run_parameter_update_<timestamp>.json
 ```
 
 ## Reproducibility artifacts
@@ -96,6 +96,7 @@ Saved artifacts include:
 
 * project name
 * artifact version
+* run ID
 * timestamp
 * example name
 * Python version
@@ -103,12 +104,17 @@ Saved artifacts include:
 * PennyLane version
 * run results
 
+Each artifact has a unique `run_id`. The artifact filename is derived from
+that `run_id`, so repeated runs do not overwrite previous artifacts. The JSON
+artifact includes the same top-level `run_id` for traceability.
+
 Example structure:
 
 ```json
 {
   "project": "qfl-mini",
   "artifact_version": "0.1",
+  "run_id": "run_parameter_update_20260516T203956Z",
   "created_at": "...",
   "example": "run_parameter_update",
   "environment": {
@@ -150,6 +156,8 @@ Implemented:
 * JSON artifact export
 * minimal parameter update loop
 * reproducibility metadata in saved artifacts
+* run IDs for saved artifacts
+* non-overwriting artifact filenames
 
 Not implemented yet:
 

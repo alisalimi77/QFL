@@ -7,6 +7,26 @@ from pathlib import Path
 from typing import Any
 
 
+def artifact_path_for_run(run_id: str, output_dir: str | Path = "runs") -> Path:
+    """Return the JSON artifact path for a run identifier.
+
+    Args:
+        run_id: Unique run identifier.
+        output_dir: Directory where run artifacts are stored.
+
+    Returns:
+        The artifact path for the run.
+
+    Raises:
+        ValueError: If ``run_id`` is empty or only whitespace.
+    """
+    clean_run_id = run_id.strip()
+    if not clean_run_id:
+        raise ValueError("run_id must not be empty.")
+
+    return Path(output_dir) / f"{clean_run_id}.json"
+
+
 def save_json_artifact(data: dict[str, Any], path: str | Path) -> Path:
     """Save a JSON reproducibility artifact and return its final path.
 

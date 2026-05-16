@@ -30,6 +30,22 @@ def collect_environment_metadata() -> dict[str, str]:
     }
 
 
+def generate_run_id(example_name: str) -> str:
+    """Generate a timestamped run identifier for an example.
+
+    Args:
+        example_name: Name of the example producing the artifact.
+
+    Returns:
+        A run identifier such as ``run_parameter_update_20260516T203956Z``.
+
+    Raises:
+        ValueError: If ``example_name`` is empty or only whitespace.
+    """
+    clean_name = _clean_example_name(example_name)
+    return _run_id_from_datetime(clean_name, datetime.now(timezone.utc))
+
+
 def build_run_artifact(example_name: str, run_result: dict[str, Any]) -> dict[str, Any]:
     """Build a reproducibility artifact around a run result.
 
@@ -44,16 +60,31 @@ def build_run_artifact(example_name: str, run_result: dict[str, Any]) -> dict[st
         ValueError: If ``example_name`` is empty.
         TypeError: If ``run_result`` is not a dictionary.
     """
-    if not example_name:
-        raise ValueError("example_name must not be empty.")
+    clean_name = _clean_example_name(example_name)
     if not isinstance(run_result, dict):
         raise TypeError("run_result must be a dictionary.")
+
+    created_at = datetime.now(timezone.utc)
+    run_id = _run_id_from_datetime(clean_name, created_at)
 
     return {
         "project": "qfl-mini",
         "artifact_version": "0.1",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "example": example_name,
+        "run_id": run_id,
+        "created_at": created_at.isoformat(),
+        "example": clean_name,
         "environment": collect_environment_metadata(),
         "run": run_result,
     }
+
+
+def _clean_example_name(example_name: str) -> str:
+    clean_name = example_name.strip()
+    if not clean_name:
+        raise ValueError("example_name must not be empty.")
+    return clean_name
+
+
+def _run_id_from_datetime(example_name: str, created_at: datetime) -> str:
+    timestamp = created_at.strftime("%Y%m%dT%H%M%SZ")
+    return f"{example_name}_{timestamp}"

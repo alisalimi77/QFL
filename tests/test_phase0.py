@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 
-from qflmini.artifacts import save_json_artifact
+from qflmini.artifacts import artifact_path_for_run, save_json_artifact
 from qflmini.client import QuantumClient
 from qflmini.coordinator import Coordinator
-from qflmini.metadata import build_run_artifact, collect_environment_metadata
+from qflmini.metadata import (
+    build_run_artifact,
+    collect_environment_metadata,
+    generate_run_id,
+)
 from qflmini.optimization import ParameterUpdateCoordinator
 
 
@@ -166,6 +171,7 @@ def test_build_run_artifact_returns_metadata_wrapper() -> None:
 
     assert artifact["project"] == "qfl-mini"
     assert artifact["artifact_version"] == "0.1"
+    assert artifact["run_id"].startswith("example_name_")
     assert artifact["example"] == "example_name"
     assert "created_at" in artifact
     assert "environment" in artifact
@@ -190,3 +196,41 @@ def test_save_json_artifact_writes_metadata_artifact(tmp_path) -> None:
     saved_data = json.loads(artifact_path.read_text(encoding="utf-8"))
     assert saved_data["project"] == "qfl-mini"
     assert saved_data["run"] == {"ok": True}
+
+
+def test_generate_run_id_uses_example_name_and_timestamp() -> None:
+    run_id = generate_run_id("run_parameter_update")
+
+    assert run_id.startswith("run_parameter_update_")
+    assert run_id.endswith("Z")
+    assert re.match(r"^run_parameter_update_\d{8}T\d{6}Z$", run_id)
+
+
+def test_generate_run_id_requires_example_name() -> None:
+    with pytest.raises(ValueError, match="example_name must not be empty"):
+        generate_run_id("")
+
+
+def test_artifact_path_for_run_uses_default_runs_directory() -> None:
+    assert artifact_path_for_run("abc123") == Path("runs") / "abc123.json"
+
+
+def test_artifact_path_for_run_accepts_output_dir(tmp_path) -> None:
+    assert artifact_path_for_run("abc123", output_dir=tmp_path) == (
+        tmp_path / "abc123.json"
+    )
+
+
+def test_artifact_path_for_run_requires_run_id() -> None:
+    with pytest.raises(ValueError, match="run_id must not be empty"):
+        artifact_path_for_run("")
+
+
+def test_save_json_artifact_with_run_id_matches_filename(tmp_path) -> None:
+    artifact = build_run_artifact("example_name", {"ok": True})
+    artifact_path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
+
+    saved_path = save_json_artifact(artifact, artifact_path)
+
+    saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
+    assert saved_data["run_id"] == saved_path.stem
