@@ -23,7 +23,10 @@ qfl-mini is:
 * not a Quantum OS
 * not a full QFL framework
 * not full QFL training
-* not gradient-based optimization yet
+* not a full optimizer framework
+* not FedAvg
+* not dataset-based training
+* not automatic differentiation-based training yet
 * not a production system
 * not a replacement for PennyLane, Qiskit, Flower, Braket, or Cirq
 * not connected to real quantum hardware yet
@@ -90,20 +93,47 @@ This writes:
 runs/run_parameter_update_<timestamp>.json
 ```
 
-The parameter update demo also tracks a simple objective value:
+The parameter update demo tracks a simple objective value:
 
 ```text
 loss = (aggregated_result - target)^2
 ```
 
-The update rule remains intentionally simple:
+The update rule is intentionally simple:
 
 ```text
 next_theta = theta - learning_rate * aggregated_result
 ```
 
-This is objective tracking only. It is not gradient-based training and it is
-not a real optimizer yet.
+This is objective tracking only. It is not gradient-based training.
+
+## Run the gradient update demo
+
+```bash
+python examples/run_gradient_update.py
+```
+
+This writes:
+
+```text
+runs/run_gradient_update_<timestamp>.json
+```
+
+The gradient update demo estimates a gradient using central finite differences:
+
+```text
+gradient ≈ (loss(theta + epsilon) - loss(theta - epsilon)) / (2 * epsilon)
+```
+
+It updates the parameter with:
+
+```text
+next_theta = theta - learning_rate * gradient
+```
+
+This is still not full QFL training. It is not PennyLane autograd. It is a
+minimal gradient-based optimization trace built on the existing execution,
+aggregation, and artifact system.
 
 ## Reproducibility artifacts
 
@@ -184,12 +214,16 @@ Implemented:
 * run IDs for saved artifacts
 * non-overwriting artifact filenames
 * simple objective/loss tracking for parameter update runs
+* finite-difference gradient update demo
 
 Not implemented yet:
 
 * full experiment tracking
 * full QFL training
-* gradient-based optimization
+* full optimizer framework
+* FedAvg
+* dataset-based training
+* automatic differentiation-based training
 * training loops
 * noise models
 * non-IID data
@@ -199,10 +233,10 @@ Not implemented yet:
 
 ## Roadmap
 
-This version still belongs to the Phase 0 / early Phase 1 seed. The parameter update loop is the Phase 1 seed, not a full training framework.
+This version still belongs to the Phase 0 / early Phase 1 seed. The parameter update loop and the finite-difference gradient update are Phase 1 seeds, not a full training framework.
 
 * Phase 0: minimal federated quantum execution
-* Phase 1: multi-round execution, run history, and a minimal parameter update loop
+* Phase 1: multi-round execution, run history, minimal parameter update loop, and finite-difference gradient update (Phase 1.4 seed)
 * Phase 2: parameter updates
 * Phase 3: federated variational quantum training
 * Phase 4: noise and backend realism

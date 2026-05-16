@@ -17,7 +17,7 @@ from qflmini.metadata import (
     collect_environment_metadata,
     generate_run_id,
 )
-from qflmini.optimization import ParameterUpdateCoordinator
+from qflmini.optimization import FiniteDifferenceGradientCoordinator, ParameterUpdateCoordinator
 
 
 def test_quantum_client_run_returns_expected_keys() -> None:
@@ -269,3 +269,95 @@ def test_parameter_update_accepts_nonzero_target() -> None:
 
     assert result["target"] == 0.5
     assert result["rounds"][0]["target"] == 0.5
+
+
+# --- FiniteDifferenceGradientCoordinator tests ---
+
+
+def test_gradient_coordinator_requires_clients() -> None:
+    with pytest.raises(ValueError, match="at least one quantum client"):
+        FiniteDifferenceGradientCoordinator([], initial_theta=0.5, learning_rate=0.1)
+
+
+def test_gradient_coordinator_requires_positive_learning_rate() -> None:
+    clients = [QuantumClient(client_id="client_1", theta=0.0)]
+
+    with pytest.raises(ValueError, match="learning_rate must be positive"):
+        FiniteDifferenceGradientCoordinator(clients, initial_theta=0.5, learning_rate=0.0)
+
+
+def test_gradient_coordinator_requires_positive_epsilon() -> None:
+    clients = [QuantumClient(client_id="client_1", theta=0.0)]
+
+    with pytest.raises(ValueError, match="epsilon must be positive"):
+        FiniteDifferenceGradientCoordinator(clients, initial_theta=0.5, learning_rate=0.1, epsilon=0.0)
+
+
+def test_gradient_coordinator_run_updates_returns_three_rounds() -> None:
+    coordinator = FiniteDifferenceGradientCoordinator(
+        [
+            QuantumClient(client_id="client_1", theta=0.0),
+            QuantumClient(client_id="client_2", theta=0.0),
+        ],
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+
+    result = coordinator.run_updates(3)
+
+    assert result["num_rounds"] == 3
+    assert "epsilon" in result
+    assert "final_theta" in result
+    assert len(result["rounds"]) == 3
+
+
+def test_gradient_coordinator_rounds_contain_expected_keys() -> None:
+    coordinator = FiniteDifferenceGradientCoordinator(
+        [QuantumClient(client_id="client_1", theta=0.0)],
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+
+    result = coordinator.run_updates(1)
+    round_result = result["rounds"][0]
+
+    for key in ("theta", "aggregated_result", "target", "loss", "loss_plus", "loss_minus", "gradient", "next_theta"):
+        assert key in round_result, f"Missing key: {key}"
+
+
+def test_gradient_coordinator_gradient_is_consistent() -> None:
+    coordinator = FiniteDifferenceGradientCoordinator(
+        [QuantumClient(client_id="client_1", theta=0.0)],
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+
+    result = coordinator.run_updates(1)
+    round_result = result["rounds"][0]
+    expected_gradient = (round_result["loss_plus"] - round_result["loss_minus"]) / (2 * result["epsilon"])
+
+    assert round_result["gradient"] == pytest.approx(expected_gradient)
+
+
+def test_gradient_coordinator_artifact_save(tmp_path) -> None:
+    coordinator = FiniteDifferenceGradientCoordinator(
+        [
+            QuantumClient(client_id="client_1", theta=0.0),
+            QuantumClient(client_id="client_2", theta=0.0),
+        ],
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+    update_result = coordinator.run_updates(2)
+
+    artifact = build_run_artifact(
+        example_name="run_gradient_update",
+        run_result=update_result,
+    )
+    artifact_path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
+    saved_path = save_json_artifact(artifact, artifact_path)
+
+    assert saved_path.exists()
+    saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
+    assert "run_id" in saved_data
+    assert "gradient" in saved_data["run"]["rounds"][0]

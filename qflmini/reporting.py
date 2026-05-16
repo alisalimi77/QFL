@@ -106,3 +106,39 @@ def format_parameter_update_report(update_result: dict[str, Any]) -> str:
     )
 
     return "\n".join(lines)
+
+
+def format_gradient_update_report(update_result: dict[str, Any]) -> str:
+    """Format a finite-difference gradient update result as a readable text report.
+
+    Args:
+        update_result: Result dictionary returned by
+            ``FiniteDifferenceGradientCoordinator.run_updates``.
+
+    Returns:
+        A clean human-readable report for the gradient update demo.
+    """
+    lines = [
+        "qfl-mini: finite-difference gradient update demo",
+        "",
+        "Rounds:",
+    ]
+
+    for round_result in update_result["rounds"]:
+        lines.append(
+            f"- round {round_result['round']} | "
+            f"theta={round_result['theta']:.6f} | "
+            f"loss={round_result['loss']:.6f} | "
+            f"gradient={round_result['gradient']:.6f} | "
+            f"next_theta={round_result['next_theta']:.6f}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Final theta:",
+            f"{update_result['final_theta']:.6f}",
+        ]
+    )
+
+    return "\n".join(lines)
