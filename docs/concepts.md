@@ -27,6 +27,11 @@ Four backend-related objects exist:
 
 The `QuantumBackend` protocol creates a seam for future adapters. It is not a plugin system and adds no new runtime dependencies.
 
+JSON manifests can select one of qfl-mini's built-in backend configs:
+`pennylane`, `constant`, or `noisy`. This support is explicit and limited; it
+does not load arbitrary Python classes, use plugins, or add external backend
+SDKs.
+
 ## Classical Coordinator
 
 The coordination layer that:
@@ -77,6 +82,19 @@ The perturbation is fully determined by `theta`, `noise`, and `seed` — no rand
 
 This is a controlled demo backend, not a hardware noise model. It is useful for comparing clean and noisy execution in a reproducible way: given the same inputs, the noisy result is always the same. The `run_clean_vs_noisy_backend.py` example demonstrates this pattern.
 
+The same deterministic noisy backend can also be selected from a JSON manifest:
+
+```json
+"backend": {
+  "type": "noisy",
+  "base": {
+    "type": "pennylane"
+  },
+  "noise": 0.05,
+  "seed": 42
+}
+```
+
 ## Finite-Difference Gradient
 
 The gradient update demo estimates a gradient numerically using central finite differences:
@@ -110,15 +128,16 @@ It is intentionally plain text and dependency-free. It is not a dashboard, not a
 
 ## Experiment Manifest
 
-A manifest is a small JSON file that declares the parameters for a supported experiment — number of clients, rounds, initial theta, learning rate, target, and epsilon. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.
+A manifest is a small JSON file that declares the parameters for a supported experiment — number of clients, rounds, initial theta, learning rate, target, epsilon, and optionally a built-in backend config. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.
 
 Each manifest includes:
 
 - `manifest_version` — currently `"0.1"`. Required. Controls which validation rules apply.
 - `name` — a short human-readable identifier such as `"default-gradient-update"`. Required. Appears in artifact comparison output so runs can be told apart at a glance.
 - `description` — a sentence explaining what the manifest does. Optional; defaults to empty string.
+- `backend` — optional built-in backend config. If omitted, it defaults to `{"type": "pennylane"}`.
 
-In the current version, manifests are limited to finite-difference gradient update experiments. Multiple example manifests live under `examples/manifests/`.
+In the current version, manifests are limited to finite-difference gradient update experiments. Backend configs are limited to `pennylane`, `constant`, and `noisy`; there are no arbitrary imports or plugin paths in manifest files. Multiple example manifests live under `examples/manifests/`.
 
 ## Run ID
 

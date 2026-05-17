@@ -128,15 +128,47 @@ The manifest describes the experiment declaratively:
 - `name` gives each manifest a human-readable identifier visible in artifact comparison output
 - `description` documents the manifest's purpose (optional)
 - only `gradient_update` is supported for now; JSON only
+- `backend` is optional; if omitted, it defaults to `{"type": "pennylane"}`
+
+Manifests can select one of qfl-mini's built-in backends:
+
+```json
+"backend": {
+  "type": "pennylane"
+}
+```
+
+```json
+"backend": {
+  "type": "constant",
+  "value": 0.5
+}
+```
+
+```json
+"backend": {
+  "type": "noisy",
+  "base": {
+    "type": "pennylane"
+  },
+  "noise": 0.05,
+  "seed": 42
+}
+```
+
+This is an explicit built-in backend builder, not arbitrary Python imports, a
+plugin system, or support for external quantum SDKs.
 
 Several example manifests are provided:
 
-| File                               | Name                      | What changes        |
-| ---------------------------------- | ------------------------- | ------------------- |
-| `gradient_update.json`             | `default-gradient-update` | Default settings    |
-| `gradient_update_low_lr.json`      | `low-learning-rate`       | Lower learning rate |
-| `gradient_update_target_half.json` | `target-half`             | Non-zero target     |
-| `gradient_update_more_rounds.json` | `more-rounds`             | More rounds         |
+| File                               | Name                       | What changes             |
+| ---------------------------------- | -------------------------- | ------------------------ |
+| `gradient_update.json`             | `default-gradient-update`  | Default PennyLane run    |
+| `gradient_update_low_lr.json`      | `low-learning-rate`        | Lower learning rate      |
+| `gradient_update_target_half.json` | `target-half`              | Non-zero target          |
+| `gradient_update_more_rounds.json` | `more-rounds`              | More rounds              |
+| `gradient_update_noisy.json`       | `noisy-gradient-update`    | Deterministic noisy run  |
+| `gradient_update_constant.json`    | `constant-gradient-update` | Deterministic constant run |
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update_low_lr.json
@@ -248,6 +280,7 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - JSON manifest v0 for gradient update experiments
 - manifest versioning (`manifest_version`) and names (`name`)
 - multiple example manifests for `gradient_update`
+- backend-aware manifest experiments for built-in backends
 - dependency-free artifact comparison helper (shows manifest names, manifest file, and backend)
 - manifest provenance recorded in artifacts (`manifest_path`)
 - minimal backend interface (`QuantumBackend` protocol, `PennyLaneBackend`)
@@ -265,7 +298,8 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - general config/plugin framework
 - richer artifact comparison
 - dashboard or plotting tools
-- backend selection in manifests
+- arbitrary backend loading or imports from manifests
+- backend plugin system
 - Qiskit / Braket / Cirq adapters
 - real hardware execution
 - hardware noise models or density-matrix simulation

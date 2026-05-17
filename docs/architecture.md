@@ -72,11 +72,13 @@ run.noisy.backend -> get_backend_metadata(NoisyBackend(PennyLaneBackend(), ...))
 JSON manifest file
   -> load_json_manifest()      reads and parses JSON
   -> validate_gradient_update_manifest()  checks types and constraints,
-       normalizes manifest_version, name, description, and numeric fields
+       normalizes manifest_version, name, description, numeric fields,
+       and backend config
+  -> build_backend_from_config()  explicitly builds one built-in backend
   -> returns normalized config dict
 
 config dict
-  -> creates QuantumClient objects
+  -> creates QuantumClient objects with the selected backend
   -> creates FiniteDifferenceGradientCoordinator
   -> run_updates(num_rounds)
   -> format_gradient_update_report()
@@ -85,6 +87,10 @@ config dict
                           result: update_result })
   -> save_json_artifact()
 ```
+
+The backend builder is intentionally explicit and limited to built-in backend
+configs: `pennylane`, `constant`, and `noisy`. It does not use dynamic imports,
+a registry, or a plugin system.
 
 ## Comparison flow
 
@@ -102,7 +108,7 @@ Saved artifact files
 
 ## Why the design is intentionally small
 
-- No base classes or plugin registries. There are three coordinator classes and one backend class; each is self-contained and easy to read from top to bottom.
+- No broad plugin registries. There are three coordinator classes and a few built-in backend classes; each is self-contained and easy to read from top to bottom.
 - No global state. Each coordinator takes clients and hyperparameters at construction time.
 - No autograd. The finite-difference gradient is computed with plain arithmetic, making the math visible in the source.
 - No external storage. Artifacts are plain JSON files written to `runs/` with standard library `json` and `pathlib`.

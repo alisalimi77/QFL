@@ -21,6 +21,8 @@ python examples/run_multi_round.py
 python examples/run_parameter_update.py
 python examples/run_gradient_update.py
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 python examples/run_custom_backend.py
 python examples/run_clean_vs_noisy_backend.py
 ```
@@ -37,10 +39,12 @@ Artifact-producing examples write timestamped JSON files under `runs/`.
 
 **`run_gradient_update.py`** — runs a finite-difference gradient update loop. Each round estimates a gradient using central finite differences and updates `next_theta = theta - learning_rate * gradient`. Saves a JSON artifact.
 
-**`run_from_manifest.py`** — loads a JSON manifest file, validates it, and runs the specified experiment. Currently only `gradient_update` manifests are supported. The manifest defines clients, rounds, initial theta, learning rate, target, and epsilon. Saves a JSON artifact that includes both the normalized manifest config and the run result.
+**`run_from_manifest.py`** — loads a JSON manifest file, validates it, and runs the specified experiment. Currently only `gradient_update` manifests are supported. The manifest defines clients, rounds, initial theta, learning rate, target, epsilon, and optionally one built-in backend config. Manifests without `backend` default to PennyLane. Saves a JSON artifact that includes the normalized manifest config, backend metadata, and the run result.
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 ```
 
 **`run_custom_backend.py`** — demonstrates backend injection without artifacts. Two clients use `ConstantBackend` with fixed values (0.2 and 0.6). The coordinator aggregates them to 0.4. No artifact is saved.
@@ -64,6 +68,8 @@ First generate some artifacts:
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_more_rounds.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 ```
 
 Then compare them:
@@ -76,18 +82,22 @@ python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
 
 ## Manifest examples
 
-| Manifest                             | Name                      | Purpose                                      |
-| ------------------------------------ | ------------------------- | -------------------------------------------- |
-| `gradient_update.json`               | `default-gradient-update` | Default finite-difference gradient update    |
-| `gradient_update_low_lr.json`        | `low-learning-rate`       | Same experiment with a smaller learning rate |
-| `gradient_update_target_half.json`   | `target-half`             | Same experiment with a non-zero target       |
-| `gradient_update_more_rounds.json`   | `more-rounds`             | Same experiment with more update rounds      |
+| Manifest                             | Name                       | Purpose                                      |
+| ------------------------------------ | -------------------------- | -------------------------------------------- |
+| `gradient_update.json`               | `default-gradient-update`  | Default finite-difference gradient update    |
+| `gradient_update_low_lr.json`        | `low-learning-rate`        | Same experiment with a smaller learning rate |
+| `gradient_update_target_half.json`   | `target-half`              | Same experiment with a non-zero target       |
+| `gradient_update_more_rounds.json`   | `more-rounds`              | Same experiment with more update rounds      |
+| `gradient_update_noisy.json`         | `noisy-gradient-update`    | Same experiment with deterministic noise     |
+| `gradient_update_constant.json`      | `constant-gradient-update` | Same experiment with `ConstantBackend`       |
 
-All manifests use `"manifest_version": "0.1"` and `"experiment": "gradient_update"`. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
+All manifests use `"manifest_version": "0.1"` and `"experiment": "gradient_update"`. Backend-aware manifests are still JSON v0.1 and only support built-in backend configs: `pennylane`, `constant`, and `noisy`. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_low_lr.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_target_half.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_more_rounds.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 ```

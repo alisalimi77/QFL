@@ -173,19 +173,22 @@ Current constraints:
 
 - only `gradient_update` is supported
 - JSON only, no YAML
-- no backend selection in manifests yet
+- backend configs are limited to built-in `pennylane`, `constant`, and `noisy`
+- no arbitrary imports, plugins, or external quantum SDK adapters
 
 ---
 
 ## 7. Try multiple manifests
 
-Four example manifests are provided. Each changes one parameter from the default:
+Six example manifests are provided. Some change optimizer parameters; two select deterministic built-in backends:
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_low_lr.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_target_half.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_more_rounds.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 ```
 
 | Manifest                             | Name                      | What changes                 |
@@ -194,12 +197,37 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_more_rou
 | `gradient_update_low_lr.json`        | `low-learning-rate`       | Smaller learning rate        |
 | `gradient_update_target_half.json`   | `target-half`             | Non-zero target (0.5)        |
 | `gradient_update_more_rounds.json`   | `more-rounds`             | Five rounds instead of three |
+| `gradient_update_noisy.json`         | `noisy-gradient-update`   | Deterministic noisy backend  |
+| `gradient_update_constant.json`      | `constant-gradient-update`| Deterministic constant backend |
 
 Each run produces a separate artifact under `runs/`.
 
 ---
 
-## 8. Compare artifacts
+## 8. Run backend-aware manifests
+
+```bash
+python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
+python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
+```
+
+The noisy manifest uses `NoisyBackend` around `PennyLaneBackend` with
+deterministic noise. The constant manifest uses `ConstantBackend`. Both are
+still JSON manifest v0.1 gradient update experiments, and both artifacts record
+the normalized manifest backend config plus backend metadata.
+
+You can compare a default, noisy, and constant manifest run:
+
+```bash
+python examples/compare_artifacts.py runs/<default>.json runs/<noisy>.json runs/<constant>.json
+```
+
+The comparison table includes a `backend` column, so backend differences are
+visible without opening each artifact.
+
+---
+
+## 9. Compare artifacts
 
 After generating at least two artifacts, compare them:
 
@@ -222,7 +250,7 @@ This is a plain text, dependency-free helper. It is not a dashboard or experimen
 
 ---
 
-## 9. Inspect an artifact
+## 10. Inspect an artifact
 
 ```bash
 python -m json.tool runs/<artifact>.json
@@ -269,7 +297,7 @@ Abbreviated shape of a manifest-run artifact:
 
 ---
 
-## 10. Run the custom backend demo
+## 11. Run the custom backend demo
 
 ```bash
 python examples/run_custom_backend.py
@@ -295,7 +323,7 @@ Backend injection requires no manifest changes. Pass any object that implements
 
 ---
 
-## 11. Run the clean-vs-noisy backend demo
+## 12. Run the clean-vs-noisy backend demo
 
 ```bash
 python examples/run_clean_vs_noisy_backend.py
@@ -335,7 +363,7 @@ The artifact records backend metadata for both the clean and noisy backends so r
 
 ---
 
-## 12. Run checks
+## 13. Run checks
 
 ```bash
 python -m compileall qflmini examples
@@ -347,7 +375,7 @@ pytest
 
 ---
 
-## 13. Where this leaves the project
+## 14. Where this leaves the project
 
 ```text
 Phase 0: minimal execution                            [done]
@@ -365,6 +393,7 @@ Phase 4: noise and backend realism                    [active]
 - track loss across rounds
 - run finite-difference gradient updates
 - run experiments from JSON manifests
+- choose a built-in backend from JSON manifests
 - save timestamped reproducibility artifacts
 - compare artifacts in a plain text table
 - inject a custom backend in Python
@@ -375,7 +404,7 @@ Phase 4: noise and backend realism                    [active]
 
 - Qiskit, Braket, Cirq adapters
 - real quantum hardware execution
-- backend selection in manifests
+- arbitrary backend imports or plugin systems
 - hardware noise models or density-matrix simulation
 - FedAvg
 - dataset-based training

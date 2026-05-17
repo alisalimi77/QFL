@@ -80,9 +80,9 @@ Started:
 
 Remaining planned items:
 
-- backend selection in manifests
-- backend metadata in all artifact types (currently manifest-run only)
-- possible adapters: Qiskit, Braket, Cirq (no commitments yet)
+- richer backend config ergonomics
+- backend metadata in all artifact types (manifest-run and clean/noisy are implemented)
+- possible adapters much later (no commitments yet)
 
 PennyLane stays the first and default backend. The interface is intentionally small — it is not a plugin system and adds no new runtime dependencies.
 
@@ -99,11 +99,14 @@ Started:
 - `get_backend_metadata()` enriched with `base_backend`, `noise`, and `seed` for `NoisyBackend`
 - clean-vs-noisy comparison demo (`run_clean_vs_noisy_backend.py`) with artifact saving
 - `format_clean_vs_noisy_backend_report()` report helper
+- backend-aware manifest experiments for built-in backends (`pennylane`, `constant`, `noisy`)
+- noisy and constant backend example manifests
 
 Remaining planned items:
 
-- noise in manifest experiments
 - metrics aggregating clean-vs-noisy difference across rounds
+- richer backend configs later
+- external backend adapters much later
 - no hardware noise models or density-matrix simulation
 
 ---

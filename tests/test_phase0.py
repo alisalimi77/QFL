@@ -25,8 +25,10 @@ from qflmini.comparison import (
     summarize_artifacts,
 )
 from qflmini.manifest import (
+    build_backend_from_config,
     load_gradient_update_manifest,
     load_json_manifest,
+    validate_backend_config,
     validate_gradient_update_manifest,
 )
 from qflmini.backends import ConstantBackend, NoisyBackend, PennyLaneBackend, get_backend_metadata
@@ -436,6 +438,134 @@ def test_validate_gradient_update_manifest_returns_normalized_values() -> None:
     assert config["learning_rate"] == 0.1
     assert config["target"] == 0.0
     assert config["epsilon"] == 0.001
+    assert config["backend"] == {"type": "pennylane"}
+
+
+def test_validate_backend_config_accepts_pennylane() -> None:
+    assert validate_backend_config({"type": "pennylane"}) == {"type": "pennylane"}
+
+
+def test_validate_backend_config_accepts_constant() -> None:
+    assert validate_backend_config({"type": "constant", "value": 0.5}) == {
+        "type": "constant",
+        "value": 0.5,
+    }
+
+
+def test_validate_backend_config_accepts_noisy() -> None:
+    config = validate_backend_config(
+        {
+            "type": "noisy",
+            "base": {"type": "pennylane"},
+            "noise": 0.05,
+            "seed": 42,
+        }
+    )
+
+    assert config == {
+        "type": "noisy",
+        "base": {"type": "pennylane"},
+        "noise": 0.05,
+        "seed": 42,
+    }
+
+
+def test_validate_backend_config_noisy_defaults_seed() -> None:
+    config = validate_backend_config(
+        {
+            "type": "noisy",
+            "base": {"type": "constant", "value": 0.5},
+            "noise": 0.05,
+        }
+    )
+
+    assert config["seed"] == 0
+    assert config["base"] == {"type": "constant", "value": 0.5}
+
+
+def test_validate_backend_config_requires_object() -> None:
+    with pytest.raises(ValueError, match="backend"):
+        validate_backend_config("pennylane")
+
+
+def test_validate_backend_config_requires_type() -> None:
+    with pytest.raises(ValueError, match="backend.type"):
+        validate_backend_config({})
+
+
+def test_validate_backend_config_rejects_unknown_type() -> None:
+    with pytest.raises(ValueError, match="Unsupported backend type"):
+        validate_backend_config({"type": "qiskit"})
+
+
+def test_validate_backend_config_constant_requires_value() -> None:
+    with pytest.raises(ValueError, match="backend.value"):
+        validate_backend_config({"type": "constant"})
+
+
+def test_validate_backend_config_constant_requires_numeric_value() -> None:
+    with pytest.raises(ValueError, match="backend.value"):
+        validate_backend_config({"type": "constant", "value": "0.5"})
+
+
+def test_validate_backend_config_noisy_requires_base() -> None:
+    with pytest.raises(ValueError, match="backend.base"):
+        validate_backend_config({"type": "noisy", "noise": 0.05})
+
+
+def test_validate_backend_config_noisy_requires_noise() -> None:
+    with pytest.raises(ValueError, match="backend.noise"):
+        validate_backend_config({"type": "noisy", "base": {"type": "pennylane"}})
+
+
+def test_validate_backend_config_noisy_rejects_negative_noise() -> None:
+    with pytest.raises(ValueError, match="backend.noise"):
+        validate_backend_config(
+            {"type": "noisy", "base": {"type": "pennylane"}, "noise": -0.1}
+        )
+
+
+def test_validate_backend_config_noisy_requires_integer_seed() -> None:
+    with pytest.raises(ValueError, match="backend.seed"):
+        validate_backend_config(
+            {
+                "type": "noisy",
+                "base": {"type": "pennylane"},
+                "noise": 0.05,
+                "seed": 4.2,
+            }
+        )
+
+
+def test_build_backend_from_config_returns_pennylane_backend() -> None:
+    backend = build_backend_from_config({"type": "pennylane"})
+
+    assert isinstance(backend, PennyLaneBackend)
+
+
+def test_build_backend_from_config_returns_constant_backend() -> None:
+    backend = build_backend_from_config({"type": "constant", "value": 0.5})
+
+    assert isinstance(backend, ConstantBackend)
+    assert backend.run_expectation(99.0) == pytest.approx(0.5)
+
+
+def test_build_backend_from_config_returns_noisy_backend() -> None:
+    backend = build_backend_from_config(
+        {
+            "type": "noisy",
+            "base": {"type": "pennylane"},
+            "noise": 0.05,
+            "seed": 42,
+        }
+    )
+
+    metadata = get_backend_metadata(backend)
+    assert isinstance(backend, NoisyBackend)
+    assert metadata["name"] == "noisy"
+    assert metadata["base_backend"] == "pennylane"
+    assert metadata["noise"] == "0.05"
+    assert metadata["seed"] == "42"
 
 
 def test_validate_gradient_update_manifest_missing_field_raises() -> None:
@@ -495,8 +625,12 @@ def test_load_gradient_update_manifest_loads_and_validates(tmp_path) -> None:
 
 def test_manifest_run_artifact_shape(tmp_path) -> None:
     config = validate_gradient_update_manifest(_VALID_MANIFEST)
+    backend = build_backend_from_config(config["backend"])
     coordinator = FiniteDifferenceGradientCoordinator(
-        [QuantumClient(client_id=f"client_{i + 1}", theta=0.0) for i in range(config["num_clients"])],
+        [
+            QuantumClient(client_id=f"client_{i + 1}", theta=0.0, backend=backend)
+            for i in range(config["num_clients"])
+        ],
         initial_theta=config["initial_theta"],
         learning_rate=config["learning_rate"],
         target=config["target"],
@@ -509,6 +643,7 @@ def test_manifest_run_artifact_shape(tmp_path) -> None:
         run_result={
             "manifest_path": "examples/manifests/gradient_update.json",
             "manifest": config,
+            "backend": get_backend_metadata(backend),
             "result": update_result,
         },
     )
@@ -519,6 +654,7 @@ def test_manifest_run_artifact_shape(tmp_path) -> None:
     assert "run_id" in saved_data
     assert saved_data["run"]["manifest_path"] == "examples/manifests/gradient_update.json"
     assert "manifest" in saved_data["run"]
+    assert saved_data["run"]["backend"]["name"] == "pennylane"
     assert "result" in saved_data["run"]
     assert saved_data["run"]["manifest"]["experiment"] == "gradient_update"
 

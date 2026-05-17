@@ -1,0 +1,16 @@
+{
+  "manifest_version": "0.1",
+  "name": "constant-gradient-update",
+  "description": "Finite-difference gradient update using a deterministic constant backend.",
+  "experiment": "gradient_update",
+  "backend": {
+    "type": "constant",
+    "value": 0.5
+  },
+  "num_clients": 2,
+  "num_rounds": 3,
+  "initial_theta": 0.5,
+  "learning_rate": 0.1,
+  "target": 0.0,
+  "epsilon": 0.001
+}

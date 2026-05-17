@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from qflmini.artifacts import artifact_path_for_run, save_json_artifact
 from qflmini.backends import get_backend_metadata
 from qflmini.client import QuantumClient
-from qflmini.manifest import load_gradient_update_manifest
+from qflmini.manifest import build_backend_from_config, load_gradient_update_manifest
 from qflmini.metadata import build_run_artifact
 from qflmini.optimization import FiniteDifferenceGradientCoordinator
 from qflmini.reporting import format_gradient_update_report
@@ -22,9 +22,10 @@ def main() -> None:
 
     manifest_path = Path(sys.argv[1])
     config = load_gradient_update_manifest(manifest_path)
+    backend = build_backend_from_config(config["backend"])
 
     clients = [
-        QuantumClient(client_id=f"client_{index + 1}", theta=0.0)
+        QuantumClient(client_id=f"client_{index + 1}", theta=0.0, backend=backend)
         for index in range(config["num_clients"])
     ]
 
@@ -43,7 +44,7 @@ def main() -> None:
         run_result={
             "manifest_path": manifest_path.as_posix(),
             "manifest": config,
-            "backend": get_backend_metadata(clients[0].backend),
+            "backend": get_backend_metadata(backend),
             "result": update_result,
         },
     )

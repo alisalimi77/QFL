@@ -6,7 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from qflmini.backends import ConstantBackend, NoisyBackend, PennyLaneBackend, QuantumBackend
+
 SUPPORTED_MANIFEST_VERSION = "0.1"
+SUPPORTED_BACKEND_TYPES = {"pennylane", "constant", "noisy"}
 
 
 def load_json_manifest(path: str | Path) -> dict[str, Any]:
@@ -116,11 +119,14 @@ def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any
     if epsilon <= 0:
         raise ValueError("'epsilon' must be positive.")
 
+    backend = validate_backend_config(manifest.get("backend", {"type": "pennylane"}))
+
     return {
         "manifest_version": SUPPORTED_MANIFEST_VERSION,
         "name": name.strip(),
         "description": description,
         "experiment": str(experiment),
+        "backend": backend,
         "num_clients": int(num_clients),
         "num_rounds": int(num_rounds),
         "initial_theta": float(initial_theta),
@@ -146,3 +152,73 @@ def load_gradient_update_manifest(path: str | Path) -> dict[str, Any]:
     """
     raw = load_json_manifest(path)
     return validate_gradient_update_manifest(raw)
+
+
+def validate_backend_config(config: Any) -> dict[str, Any]:
+    """Validate and normalize a built-in backend configuration.
+
+    Supported backend types are ``pennylane``, ``constant``, and ``noisy``.
+    This function does not support arbitrary imports or plugin loading.
+    """
+    if not isinstance(config, dict):
+        raise ValueError("'backend' must be an object.")
+
+    backend_type = config.get("type")
+    if not isinstance(backend_type, str) or not backend_type:
+        raise ValueError("'backend.type' is required and must be a string.")
+    if backend_type not in SUPPORTED_BACKEND_TYPES:
+        raise ValueError(
+            f"Unsupported backend type: '{backend_type}'. "
+            "Supported types are: pennylane, constant, noisy."
+        )
+
+    if backend_type == "pennylane":
+        return {"type": "pennylane"}
+
+    if backend_type == "constant":
+        if "value" not in config:
+            raise ValueError("'backend.value' is required for constant backend.")
+        value = config["value"]
+        if not isinstance(value, (int, float)):
+            raise ValueError("'backend.value' must be a number.")
+        return {"type": "constant", "value": float(value)}
+
+    if "base" not in config:
+        raise ValueError("'backend.base' is required for noisy backend.")
+    if "noise" not in config:
+        raise ValueError("'backend.noise' is required for noisy backend.")
+
+    noise = config["noise"]
+    if not isinstance(noise, (int, float)):
+        raise ValueError("'backend.noise' must be a number.")
+    if noise < 0:
+        raise ValueError("'backend.noise' must be >= 0.")
+
+    seed = config.get("seed", 0)
+    if not isinstance(seed, int):
+        raise ValueError("'backend.seed' must be an integer if provided.")
+
+    return {
+        "type": "noisy",
+        "base": validate_backend_config(config["base"]),
+        "noise": float(noise),
+        "seed": int(seed),
+    }
+
+
+def build_backend_from_config(config: dict[str, Any]) -> QuantumBackend:
+    """Build one of qfl-mini's built-in backends from validated config."""
+    backend_type = config.get("type")
+
+    if backend_type == "pennylane":
+        return PennyLaneBackend()
+    if backend_type == "constant":
+        return ConstantBackend(config["value"])
+    if backend_type == "noisy":
+        return NoisyBackend(
+            base_backend=build_backend_from_config(config["base"]),
+            noise=config["noise"],
+            seed=config["seed"],
+        )
+
+    raise ValueError(f"Unsupported backend type: '{backend_type}'.")
