@@ -55,7 +55,7 @@ class ParameterUpdateCoordinator:
 
         for round_index in range(1, num_rounds + 1):
             round_clients = [
-                QuantumClient(client_id=client.client_id, theta=theta)
+                QuantumClient(client_id=client.client_id, theta=theta, backend=client.backend)
                 for client in self.clients
             ]
             client_results = [client.run() for client in round_clients]
@@ -118,7 +118,7 @@ class FiniteDifferenceGradientCoordinator:
     def _evaluate_at_theta(self, theta: float) -> dict[str, Any]:
         """Run all clients at the given theta and return aggregated result and loss."""
         round_clients = [
-            QuantumClient(client_id=client.client_id, theta=theta)
+            QuantumClient(client_id=client.client_id, theta=theta, backend=client.backend)
             for client in self.clients
         ]
         client_results = [client.run() for client in round_clients]

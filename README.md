@@ -31,7 +31,9 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 
 ## Core ideas
 
-**Quantum Client** — a local execution node. In this prototype, a Python object with a local parameter and a PennyLane circuit.
+**Quantum Client** — a local execution node. In this prototype, a Python object with a local parameter and a backend that runs a PennyLane circuit.
+
+**Quantum Backend** — the object responsible for running a scalar-theta expectation circuit. Currently only `PennyLaneBackend` exists. The interface is a small seam for future adapters; it is not a plugin system and adds no new dependencies.
 
 **Classical Coordinator** — collects client outputs, applies aggregation, and drives repeated rounds or parameter updates.
 
@@ -145,9 +147,9 @@ Example output:
 ```text
 qfl-mini: artifact comparison
 
-run_id                                          manifest                   experiment       rounds  final_theta  final_loss
-run_from_manifest_gradient_update_...           default-gradient-update    gradient_update  3       0.773778     0.608376
-run_from_manifest_gradient_update_...           more-rounds                gradient_update  5       0.972194     0.412106
+run_id                                          manifest                   manifest_file                     experiment       rounds  final_theta  final_loss
+run_from_manifest_gradient_update_...           default-gradient-update    gradient_update.json              gradient_update  3       0.773778     0.608376
+run_from_manifest_gradient_update_...           more-rounds                gradient_update_more_rounds.json  gradient_update  5       0.972194     0.412106
 ```
 
 This is a lightweight comparison helper — no dashboard, no database, no plotting.
@@ -232,7 +234,9 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - JSON manifest v0 for gradient update experiments
 - manifest versioning (`manifest_version`) and names (`name`)
 - multiple example manifests for `gradient_update`
-- dependency-free artifact comparison helper (shows manifest names)
+- dependency-free artifact comparison helper (shows manifest names and manifest file)
+- manifest provenance recorded in artifacts (`manifest_path`)
+- minimal backend interface (`QuantumBackend` protocol, `PennyLaneBackend`)
 
 **Not implemented yet:**
 
@@ -241,8 +245,9 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - general config/plugin framework
 - richer artifact comparison
 - dashboard or plotting tools
-- backend adapters
-- Qiskit / Braket / Cirq support
+- backend selection in manifests
+- backend metadata in artifacts
+- Qiskit / Braket / Cirq adapters
 - real hardware execution
 - datasets
 - FedAvg
@@ -255,7 +260,7 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 Phase 0: minimal federated quantum execution                      [done]
 Phase 1: parameter updates, loss tracking, gradient demo          [done]
 Phase 2: experiment manifests (JSON manifest v0 started)          [in progress]
-Phase 3: backend adapters
+Phase 3: backend adapters (minimal interface started)             [in progress]
 Phase 4: noise and backend realism
 Phase 5: richer QFL training examples
 Phase 6: optional real hardware integration

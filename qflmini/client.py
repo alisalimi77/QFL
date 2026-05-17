@@ -2,22 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
-from qflmini.circuits import run_single_qubit_expectation
+from qflmini.backends import PennyLaneBackend, QuantumBackend
 
 
 @dataclass(frozen=True)
 class QuantumClient:
     """A local quantum execution node in a federated quantum workload.
 
-    For Phase 0, a quantum client is a local Python object. It owns a local
-    parameter and executes a deterministic PennyLane circuit.
+    A quantum client owns a local parameter and delegates circuit execution
+    to a backend. The default backend is PennyLaneBackend.
     """
 
     client_id: str
     theta: float
+    backend: QuantumBackend = field(default_factory=PennyLaneBackend)
 
     def run(self) -> dict[str, Any]:
         """Execute the client's local quantum circuit.
@@ -26,7 +27,7 @@ class QuantumClient:
             A dictionary containing the client identifier, local parameter, and
             circuit result.
         """
-        result = run_single_qubit_expectation(self.theta)
+        result = self.backend.run_expectation(self.theta)
         return {
             "client_id": self.client_id,
             "theta": self.theta,

@@ -45,6 +45,8 @@ Started:
 - optional `description` field in manifests
 - artifact comparison shows manifest names
 - simple dependency-free artifact comparison helper (`comparison.py`, `compare_artifacts.py`)
+- manifest provenance in artifacts (`manifest_path` recorded in run dict)
+- artifact comparison shows manifest filename (`manifest_file` column)
 
 Remaining planned items:
 
@@ -60,11 +62,22 @@ The Python API stays primary. The manifest format is an optional convenience lay
 
 ## Phase 3 — Backend adapters
 
-**Status: planned.**
+**Status: started.**
 
-PennyLane stays the first and default backend. A simple adapter interface would allow other simulators or APIs to be wired in without changing the coordinator logic.
+Started:
 
-Possible future backends: Qiskit, Braket, Cirq. No commitments yet.
+- minimal `QuantumBackend` protocol (`backends.py`)
+- `PennyLaneBackend` as the only implementation
+- `QuantumClient` now delegates to its backend; defaults to `PennyLaneBackend`
+- coordinators preserve the backend when creating temporary clients
+
+Remaining planned items:
+
+- backend selection in manifests
+- backend metadata in artifacts
+- possible adapters: Qiskit, Braket, Cirq (no commitments yet)
+
+PennyLane stays the first and default backend. The interface is intentionally small — it is not a plugin system and adds no new runtime dependencies.
 
 ---
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
 import json
 from pathlib import Path
 import re
@@ -28,7 +29,18 @@ from qflmini.manifest import (
     load_json_manifest,
     validate_gradient_update_manifest,
 )
+from qflmini.backends import PennyLaneBackend
 from qflmini.optimization import FiniteDifferenceGradientCoordinator, ParameterUpdateCoordinator
+
+
+class ConstantBackend:
+    """Test backend that always returns a fixed value, ignoring theta."""
+
+    def __init__(self, value: float) -> None:
+        self.value = value
+
+    def run_expectation(self, theta: float) -> float:
+        return self.value
 
 
 def test_quantum_client_run_returns_expected_keys() -> None:
@@ -40,6 +52,12 @@ def test_quantum_client_run_returns_expected_keys() -> None:
     assert result["client_id"] == "client_1"
     assert result["theta"] == 0.2
     assert isinstance(result["result"], float)
+
+
+def test_quantum_client_is_immutable() -> None:
+    client = QuantumClient(client_id="client_1", theta=0.2)
+    with pytest.raises(FrozenInstanceError):
+        client.theta = 0.4
 
 
 def test_coordinator_run_round_returns_aggregated_result() -> None:
@@ -497,13 +515,18 @@ def test_manifest_run_artifact_shape(tmp_path) -> None:
 
     artifact = build_run_artifact(
         example_name="run_from_manifest_gradient_update",
-        run_result={"manifest": config, "result": update_result},
+        run_result={
+            "manifest_path": "examples/manifests/gradient_update.json",
+            "manifest": config,
+            "result": update_result,
+        },
     )
     artifact_path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
     saved_path = save_json_artifact(artifact, artifact_path)
 
     saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
     assert "run_id" in saved_data
+    assert saved_data["run"]["manifest_path"] == "examples/manifests/gradient_update.json"
     assert "manifest" in saved_data["run"]
     assert "result" in saved_data["run"]
     assert saved_data["run"]["manifest"]["experiment"] == "gradient_update"
@@ -587,6 +610,7 @@ _MANIFEST_ARTIFACT = {
     "run_id": "run_from_manifest_gradient_update_20260101T000001Z",
     "example": "run_from_manifest_gradient_update",
     "run": {
+        "manifest_path": "examples/manifests/gradient_update_more_rounds.json",
         "manifest": {
             "manifest_version": "0.1",
             "name": "more-rounds",
@@ -632,6 +656,8 @@ def test_summarize_artifact_direct_shape() -> None:
     assert summary["run_id"] == "run_gradient_update_20260101T000000Z"
     assert summary["example"] == "run_gradient_update"
     assert summary["experiment"] == "gradient_update"
+    assert summary["manifest_path"] == "unknown"
+    assert summary["manifest_file"] == "unknown"
     assert summary["num_rounds"] == 3
     assert summary["final_theta"] == pytest.approx(0.773778)
     assert summary["final_loss"] == pytest.approx(0.608376)
@@ -643,6 +669,8 @@ def test_summarize_artifact_manifest_shape() -> None:
     assert summary["experiment"] == "gradient_update"
     assert summary["manifest_name"] == "more-rounds"
     assert summary["manifest_version"] == "0.1"
+    assert summary["manifest_path"] == "examples/manifests/gradient_update_more_rounds.json"
+    assert summary["manifest_file"] == "gradient_update_more_rounds.json"
     assert summary["num_rounds"] == 5
     assert summary["final_theta"] == pytest.approx(0.972194)
     assert summary["final_loss"] == pytest.approx(0.412106)
@@ -656,6 +684,8 @@ def test_summarize_artifact_handles_missing_fields() -> None:
     assert summary["experiment"] == "unknown"
     assert summary["manifest_name"] == "unknown"
     assert summary["manifest_version"] == "unknown"
+    assert summary["manifest_path"] == "unknown"
+    assert summary["manifest_file"] == "unknown"
     assert summary["num_rounds"] is None
     assert summary["final_theta"] is None
     assert summary["final_loss"] is None
@@ -693,6 +723,8 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
     output = format_artifact_comparison(summaries)
 
     assert "qfl-mini: artifact comparison" in output
+    assert "manifest_file" in output
+    assert "gradient_update_more_rounds.json" in output
     assert "more-rounds" in output
     assert "0.773778" in output
     assert "0.608376" in output
@@ -703,3 +735,71 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
 def test_format_artifact_comparison_empty_raises() -> None:
     with pytest.raises(ValueError, match="empty"):
         format_artifact_comparison([])
+
+
+# --- backend tests ---
+
+
+def test_default_backend_runs_and_returns_result() -> None:
+    client = QuantumClient(client_id="client_1", theta=0.2)
+    result = client.run()
+
+    assert result["client_id"] == "client_1"
+    assert isinstance(result["result"], float)
+
+
+def test_pennylane_backend_direct_call() -> None:
+    backend = PennyLaneBackend()
+    value = backend.run_expectation(0.2)
+
+    assert isinstance(value, float)
+
+
+def test_custom_backend_injection() -> None:
+    client = QuantumClient(
+        client_id="client_1",
+        theta=123.0,
+        backend=ConstantBackend(0.42),
+    )
+
+    assert client.run()["result"] == pytest.approx(0.42)
+
+
+def test_coordinator_with_custom_backend() -> None:
+    clients = [
+        QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.2)),
+        QuantumClient("client_2", theta=0.0, backend=ConstantBackend(0.6)),
+    ]
+    result = Coordinator(clients).run_round()
+
+    assert result["aggregated_result"] == pytest.approx(0.4)
+
+
+def test_parameter_update_coordinator_preserves_backend() -> None:
+    clients = [
+        QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.5)),
+        QuantumClient("client_2", theta=0.0, backend=ConstantBackend(0.5)),
+    ]
+    coordinator = ParameterUpdateCoordinator(
+        clients, initial_theta=1.0, learning_rate=0.1
+    )
+    result = coordinator.run_updates(1)
+
+    assert result["rounds"][0]["aggregated_result"] == pytest.approx(0.5)
+    assert result["rounds"][0]["next_theta"] == pytest.approx(1.0 - 0.1 * 0.5)
+
+
+def test_gradient_coordinator_preserves_backend() -> None:
+    clients = [
+        QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.5)),
+        QuantumClient("client_2", theta=0.0, backend=ConstantBackend(0.5)),
+    ]
+    coordinator = FiniteDifferenceGradientCoordinator(
+        clients, initial_theta=1.0, learning_rate=0.1, target=0.0
+    )
+    result = coordinator.run_updates(1)
+    round_result = result["rounds"][0]
+
+    # Constant backend: loss_plus == loss_minus, so gradient == 0
+    assert round_result["gradient"] == pytest.approx(0.0)
+    assert round_result["next_theta"] == pytest.approx(1.0)

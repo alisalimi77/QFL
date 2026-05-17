@@ -14,6 +14,12 @@ A local execution node. In this prototype, a quantum client is a Python object t
 
 Later versions could map a client to a different simulator backend, a cloud API, or real hardware — but the coordination interface stays the same.
 
+## Quantum Backend
+
+A backend is the object responsible for running a scalar-theta expectation circuit and returning a float. `QuantumClient` delegates circuit execution to its backend via `backend.run_expectation(theta)`.
+
+Currently only `PennyLaneBackend` exists. It calls `run_single_qubit_expectation` from `circuits.py`. The `QuantumBackend` protocol creates a seam for future adapters without adding any new backend today. It is not a plugin system and does not add new runtime dependencies.
+
 ## Classical Coordinator
 
 The coordination layer that:
@@ -76,7 +82,7 @@ Artifacts are designed to be inspectable by humans and machines without any spec
 
 ## Artifact Comparison
 
-Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts a few summary fields (run ID, experiment, rounds, final theta, final loss), and prints a plain text table.
+Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts a few summary fields (run ID, manifest name, manifest file, experiment, rounds, final theta, final loss), and prints a plain text table.
 
 It is intentionally plain text and dependency-free. It is not a dashboard, not a plotting tool, and not an experiment tracking server.
 

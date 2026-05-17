@@ -7,6 +7,7 @@ qfl-mini is intentionally small. The design keeps each concern in a separate mod
 | Module            | Role                                                            |
 | ----------------- | --------------------------------------------------------------- |
 | `circuits.py`     | PennyLane circuit definition and execution                      |
+| `backends.py`     | Minimal backend protocol and PennyLane-backed implementation    |
 | `client.py`       | Quantum client abstraction (`QuantumClient`)                    |
 | `coordinator.py`  | Basic multi-round coordination and mean aggregation             |
 | `optimization.py` | Parameter and gradient update coordinators                      |
@@ -20,16 +21,19 @@ qfl-mini is intentionally small. The design keeps each concern in a separate mod
 
 ```text
 QuantumClient.run()
+  -> backend.run_expectation(theta)  (default: PennyLaneBackend)
   -> circuits.run_single_qubit_expectation(theta)
   -> returns { client_id, theta, result }
 
 Coordinator / ParameterUpdateCoordinator / FiniteDifferenceGradientCoordinator
-  -> instantiates temporary QuantumClient objects per round
+  -> instantiates temporary QuantumClient objects per round, preserving backend
   -> collects per-client results
   -> computes mean aggregation
   -> computes loss / gradient / next_theta
   -> returns structured round trace
 ```
+
+The backend interface (`QuantumBackend`) is a small seam between `QuantumClient` and the circuit implementation. It is not a plugin system and adds no new runtime dependencies. Currently only `PennyLaneBackend` exists.
 
 ## Artifact flow
 
@@ -64,7 +68,7 @@ config dict
   -> creates FiniteDifferenceGradientCoordinator
   -> run_updates(num_rounds)
   -> format_gradient_update_report()
-  -> build_run_artifact({ manifest: config, result: update_result })
+  -> build_run_artifact({ manifest_path: posix_path, manifest: config, result: update_result })
   -> save_json_artifact()
 ```
 
@@ -74,13 +78,16 @@ config dict
 Saved artifact files
   -> load_artifact()          reads and validates JSON
   -> summarize_artifact()     extracts run_id, experiment, manifest_name,
-                              manifest_version, num_rounds, final_theta, final_loss
-  -> format_artifact_comparison()  produces a plain text table (manifest name column)
+                              manifest_version, manifest_path, manifest_file,
+                              num_rounds, final_theta, final_loss
+  -> format_artifact_comparison()  produces a plain text table
+                              (columns: run_id, manifest, manifest_file,
+                               experiment, rounds, final_theta, final_loss)
 ```
 
 ## Why the design is intentionally small
 
-- No base classes or plugin registries. There are three coordinator classes; each is self-contained and easy to read from top to bottom.
+- No base classes or plugin registries. There are three coordinator classes and one backend class; each is self-contained and easy to read from top to bottom.
 - No global state. Each coordinator takes clients and hyperparameters at construction time.
 - No autograd. The finite-difference gradient is computed with plain arithmetic, making the math visible in the source.
 - No external storage. Artifacts are plain JSON files written to `runs/` with standard library `json` and `pathlib`.
