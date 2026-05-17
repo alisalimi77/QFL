@@ -8,6 +8,7 @@ from typing import Any
 
 _MAX_RUN_ID_WIDTH = 46
 _MAX_MANIFEST_WIDTH = 25
+_MAX_MANIFEST_FILE_WIDTH = 40
 
 
 def load_artifact(path: str | Path) -> dict[str, Any]:
@@ -43,8 +44,8 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         A summary dictionary with keys: run_id, example, experiment, manifest_name,
-        manifest_version, num_rounds, final_theta, final_loss. Missing fields are
-        represented as None or "unknown".
+        manifest_version, manifest_path, manifest_file, num_rounds, final_theta,
+        final_loss. Missing fields are represented as None or "unknown".
     """
     run_id = artifact.get("run_id", "unknown")
     example = artifact.get("example", "unknown")
@@ -70,6 +71,13 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     manifest_name = manifest_data.get("name", "unknown")
     manifest_version = manifest_data.get("manifest_version", "unknown")
 
+    # manifest provenance
+    manifest_path_str = run.get("manifest_path", "unknown")
+    if manifest_path_str != "unknown":
+        manifest_file = Path(manifest_path_str).name
+    else:
+        manifest_file = "unknown"
+
     # num_rounds
     num_rounds = result_data.get("num_rounds", manifest_data.get("num_rounds"))
 
@@ -89,6 +97,8 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
         "experiment": experiment,
         "manifest_name": manifest_name,
         "manifest_version": manifest_version,
+        "manifest_path": manifest_path_str,
+        "manifest_file": manifest_file,
         "num_rounds": num_rounds,
         "final_theta": final_theta,
         "final_loss": final_loss,
@@ -138,12 +148,13 @@ def format_artifact_comparison(summaries: list[dict[str, Any]]) -> str:
             return "n/a"
         return str(int(value))
 
-    headers = ["run_id", "manifest", "experiment", "rounds", "final_theta", "final_loss"]
+    headers = ["run_id", "manifest", "manifest_file", "experiment", "rounds", "final_theta", "final_loss"]
 
     rows = [
         [
             _trunc(s["run_id"], _MAX_RUN_ID_WIDTH),
             _trunc(s["manifest_name"], _MAX_MANIFEST_WIDTH),
+            _trunc(s["manifest_file"], _MAX_MANIFEST_FILE_WIDTH),
             str(s["experiment"]),
             _fmt_int(s["num_rounds"]),
             _fmt_float(s["final_theta"]),

@@ -40,6 +40,7 @@ def main() -> None:
     artifact = build_run_artifact(
         example_name="run_from_manifest_gradient_update",
         run_result={
+            "manifest_path": manifest_path.as_posix(),
             "manifest": config,
             "result": update_result,
         },
