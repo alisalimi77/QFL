@@ -33,7 +33,7 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 
 **Quantum Client** — a local execution node. In this prototype, a Python object with a local parameter and a backend that runs a PennyLane circuit.
 
-**Quantum Backend** — the object responsible for running a scalar-theta expectation circuit. Currently only `PennyLaneBackend` exists. The interface is a small seam for future adapters; it is not a plugin system and adds no new dependencies.
+**Quantum Backend** — the object responsible for running a scalar-theta expectation circuit. `PennyLaneBackend` is the only real quantum backend. `ConstantBackend` is a deterministic test/demo backend that always returns a fixed value. The interface is a small seam for future adapters; it is not a plugin system and adds no new dependencies.
 
 **Classical Coordinator** — collects client outputs, applies aggregation, and drives repeated rounds or parameter updates.
 
@@ -75,6 +75,7 @@ See [docs/architecture.md](docs/architecture.md) for the module layout and execu
 | `run_parameter_update.py` | Heuristic parameter update with objective/loss tracking      | Yes              |
 | `run_gradient_update.py`  | Finite-difference gradient update with reproducible artifact | Yes              |
 | `run_from_manifest.py`    | Run a gradient update experiment from a JSON manifest        | Yes              |
+| `run_custom_backend.py`   | Backend injection demo with `ConstantBackend`                | No               |
 
 ## Installation
 
@@ -196,9 +197,15 @@ Example shape:
     "pennylane_version": "0.45.0"
   },
   "run": {
-    "num_rounds": 3,
-    "epsilon": 0.001,
-    "final_theta": 0.773778
+    "manifest_path": "examples/manifests/gradient_update.json",
+    "backend": {
+      "name": "pennylane",
+      "class": "PennyLaneBackend"
+    },
+    "result": {
+      "num_rounds": 3,
+      "final_theta": 0.773778
+    }
   }
 }
 ```
@@ -234,9 +241,13 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - JSON manifest v0 for gradient update experiments
 - manifest versioning (`manifest_version`) and names (`name`)
 - multiple example manifests for `gradient_update`
-- dependency-free artifact comparison helper (shows manifest names and manifest file)
+- dependency-free artifact comparison helper (shows manifest names, manifest file, and backend)
 - manifest provenance recorded in artifacts (`manifest_path`)
 - minimal backend interface (`QuantumBackend` protocol, `PennyLaneBackend`)
+- `ConstantBackend` for tests and demos
+- `get_backend_metadata()` helper
+- backend metadata recorded in manifest-run artifacts
+- custom backend injection demo (`run_custom_backend.py`)
 
 **Not implemented yet:**
 

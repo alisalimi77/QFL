@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from qflmini.artifacts import artifact_path_for_run, save_json_artifact
+from qflmini.backends import get_backend_metadata
 from qflmini.client import QuantumClient
 from qflmini.manifest import load_gradient_update_manifest
 from qflmini.metadata import build_run_artifact
@@ -42,6 +43,7 @@ def main() -> None:
         run_result={
             "manifest_path": manifest_path.as_posix(),
             "manifest": config,
+            "backend": get_backend_metadata(clients[0].backend),
             "result": update_result,
         },
     )

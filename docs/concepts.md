@@ -18,7 +18,13 @@ Later versions could map a client to a different simulator backend, a cloud API,
 
 A backend is the object responsible for running a scalar-theta expectation circuit and returning a float. `QuantumClient` delegates circuit execution to its backend via `backend.run_expectation(theta)`.
 
-Currently only `PennyLaneBackend` exists. It calls `run_single_qubit_expectation` from `circuits.py`. The `QuantumBackend` protocol creates a seam for future adapters without adding any new backend today. It is not a plugin system and does not add new runtime dependencies.
+Three backend-related objects exist:
+
+- **`PennyLaneBackend`** — the only real quantum backend. Calls `run_single_qubit_expectation` from `circuits.py`. Default backend for all clients.
+- **`ConstantBackend`** — a deterministic backend that always returns a fixed value regardless of theta. Intended for tests and demos only; not a quantum simulator.
+- **`get_backend_metadata(backend)`** — returns `{"name": ..., "class": ...}` for any backend. Used to record which backend ran a manifest experiment.
+
+The `QuantumBackend` protocol creates a seam for future adapters. It is not a plugin system and adds no new runtime dependencies.
 
 ## Classical Coordinator
 
@@ -78,11 +84,13 @@ A timestamped JSON file written by artifact-producing examples. It contains:
 - environment metadata (Python version, platform, PennyLane version)
 - full run trace (per-round results, parameters, loss values)
 
+Manifest-run artifacts additionally include backend metadata (`name` and `class`) so the execution backend is traceable from the artifact alone.
+
 Artifacts are designed to be inspectable by humans and machines without any special tooling beyond a JSON reader.
 
 ## Artifact Comparison
 
-Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts a few summary fields (run ID, manifest name, manifest file, experiment, rounds, final theta, final loss), and prints a plain text table.
+Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts summary fields (run ID, manifest name, manifest file, backend name, experiment, rounds, final theta, final loss), and prints a plain text table.
 
 It is intentionally plain text and dependency-free. It is not a dashboard, not a plotting tool, and not an experiment tracking server.
 

@@ -108,6 +108,39 @@ def format_parameter_update_report(update_result: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def format_custom_backend_report(round_result: dict[str, Any]) -> str:
+    """Format one coordinator round result for the custom backend demo.
+
+    Args:
+        round_result: Result dictionary returned by ``Coordinator.run_round``.
+
+    Returns:
+        A clean human-readable report showing per-client results and aggregation.
+    """
+    lines = [
+        "qfl-mini: custom backend demo",
+        "",
+        "Client results:",
+    ]
+
+    for client_result in round_result["client_results"]:
+        lines.append(
+            f"- {client_result['client_id']} | "
+            f"theta={client_result['theta']} | "
+            f"result={client_result['result']:.6f}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Aggregated result:",
+            f"{round_result['aggregated_result']:.6f}",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
 def format_gradient_update_report(update_result: dict[str, Any]) -> str:
     """Format a finite-difference gradient update result as a readable text report.
 

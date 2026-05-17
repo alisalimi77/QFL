@@ -67,14 +67,19 @@ The Python API stays primary. The manifest format is an optional convenience lay
 Started:
 
 - minimal `QuantumBackend` protocol (`backends.py`)
-- `PennyLaneBackend` as the only implementation
+- `PennyLaneBackend` as the only real quantum backend
+- `ConstantBackend` for tests and demos (deterministic, not a simulator)
+- `get_backend_metadata()` helper returns `name` and `class` for any backend
 - `QuantumClient` now delegates to its backend; defaults to `PennyLaneBackend`
 - coordinators preserve the backend when creating temporary clients
+- backend metadata recorded in manifest-run artifacts
+- artifact comparison table shows backend name column
+- custom backend demo (`run_custom_backend.py`)
 
 Remaining planned items:
 
 - backend selection in manifests
-- backend metadata in artifacts
+- backend metadata in all artifact types (currently manifest-run only)
 - possible adapters: Qiskit, Braket, Cirq (no commitments yet)
 
 PennyLane stays the first and default backend. The interface is intentionally small — it is not a plugin system and adds no new runtime dependencies.

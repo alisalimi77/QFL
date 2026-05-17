@@ -29,18 +29,9 @@ from qflmini.manifest import (
     load_json_manifest,
     validate_gradient_update_manifest,
 )
-from qflmini.backends import PennyLaneBackend
+from qflmini.backends import ConstantBackend, PennyLaneBackend, get_backend_metadata
 from qflmini.optimization import FiniteDifferenceGradientCoordinator, ParameterUpdateCoordinator
-
-
-class ConstantBackend:
-    """Test backend that always returns a fixed value, ignoring theta."""
-
-    def __init__(self, value: float) -> None:
-        self.value = value
-
-    def run_expectation(self, theta: float) -> float:
-        return self.value
+from qflmini.reporting import format_custom_backend_report
 
 
 def test_quantum_client_run_returns_expected_keys() -> None:
@@ -617,6 +608,10 @@ _MANIFEST_ARTIFACT = {
             "experiment": "gradient_update",
             "num_rounds": 5,
         },
+        "backend": {
+            "name": "pennylane",
+            "class": "PennyLaneBackend",
+        },
         "result": {
             "num_rounds": 5,
             "final_theta": 0.972194,
@@ -658,6 +653,8 @@ def test_summarize_artifact_direct_shape() -> None:
     assert summary["experiment"] == "gradient_update"
     assert summary["manifest_path"] == "unknown"
     assert summary["manifest_file"] == "unknown"
+    assert summary["backend_name"] == "unknown"
+    assert summary["backend_class"] == "unknown"
     assert summary["num_rounds"] == 3
     assert summary["final_theta"] == pytest.approx(0.773778)
     assert summary["final_loss"] == pytest.approx(0.608376)
@@ -671,6 +668,8 @@ def test_summarize_artifact_manifest_shape() -> None:
     assert summary["manifest_version"] == "0.1"
     assert summary["manifest_path"] == "examples/manifests/gradient_update_more_rounds.json"
     assert summary["manifest_file"] == "gradient_update_more_rounds.json"
+    assert summary["backend_name"] == "pennylane"
+    assert summary["backend_class"] == "PennyLaneBackend"
     assert summary["num_rounds"] == 5
     assert summary["final_theta"] == pytest.approx(0.972194)
     assert summary["final_loss"] == pytest.approx(0.412106)
@@ -686,6 +685,8 @@ def test_summarize_artifact_handles_missing_fields() -> None:
     assert summary["manifest_version"] == "unknown"
     assert summary["manifest_path"] == "unknown"
     assert summary["manifest_file"] == "unknown"
+    assert summary["backend_name"] == "unknown"
+    assert summary["backend_class"] == "unknown"
     assert summary["num_rounds"] is None
     assert summary["final_theta"] is None
     assert summary["final_loss"] is None
@@ -724,6 +725,8 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
 
     assert "qfl-mini: artifact comparison" in output
     assert "manifest_file" in output
+    assert "backend" in output
+    assert "pennylane" in output
     assert "gradient_update_more_rounds.json" in output
     assert "more-rounds" in output
     assert "0.773778" in output
@@ -803,3 +806,79 @@ def test_gradient_coordinator_preserves_backend() -> None:
     # Constant backend: loss_plus == loss_minus, so gradient == 0
     assert round_result["gradient"] == pytest.approx(0.0)
     assert round_result["next_theta"] == pytest.approx(1.0)
+
+
+# --- backend metadata tests ---
+
+
+def test_pennylane_backend_metadata() -> None:
+    meta = get_backend_metadata(PennyLaneBackend())
+
+    assert meta["name"] == "pennylane"
+    assert meta["class"] == "PennyLaneBackend"
+
+
+def test_constant_backend_metadata() -> None:
+    meta = get_backend_metadata(ConstantBackend(0.5))
+
+    assert meta["name"] == "constant"
+    assert meta["class"] == "ConstantBackend"
+
+
+def test_backend_metadata_falls_back_to_class_name_when_no_name() -> None:
+    class NoNameBackend:
+        def run_expectation(self, theta: float) -> float:
+            return 0.0
+
+    meta = get_backend_metadata(NoNameBackend())
+
+    assert meta["name"] == "NoNameBackend"
+    assert meta["class"] == "NoNameBackend"
+
+
+def test_backend_metadata_falls_back_to_class_name_when_name_is_empty() -> None:
+    class EmptyNameBackend:
+        name = ""
+
+        def run_expectation(self, theta: float) -> float:
+            return 0.0
+
+    meta = get_backend_metadata(EmptyNameBackend())
+
+    assert meta["name"] == "EmptyNameBackend"
+    assert meta["class"] == "EmptyNameBackend"
+
+
+# --- ConstantBackend behavior tests ---
+
+
+def test_constant_backend_returns_fixed_value() -> None:
+    backend = ConstantBackend(0.42)
+
+    assert backend.run_expectation(0.0) == pytest.approx(0.42)
+    assert backend.run_expectation(999.0) == pytest.approx(0.42)
+
+
+def test_constant_backend_via_client() -> None:
+    client = QuantumClient(client_id="client_1", theta=0.0, backend=ConstantBackend(0.42))
+
+    assert client.run()["result"] == pytest.approx(0.42)
+
+
+# --- custom backend report tests ---
+
+
+def test_format_custom_backend_report_contains_expected_content() -> None:
+    clients = [
+        QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.2)),
+        QuantumClient("client_2", theta=0.0, backend=ConstantBackend(0.6)),
+    ]
+    round_result = Coordinator(clients).run_round()
+    output = format_custom_backend_report(round_result)
+
+    assert "custom backend demo" in output
+    assert "client_1" in output
+    assert "client_2" in output
+    assert "0.200000" in output
+    assert "0.600000" in output
+    assert "0.400000" in output
