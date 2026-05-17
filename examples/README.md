@@ -10,6 +10,8 @@
 | `compare_artifacts.py`    | Compares saved JSON artifacts from multiple runs                      | No               |
 | `run_custom_backend.py`   | Backend injection with a deterministic `ConstantBackend`              | No               |
 
+For a guided sequence through these examples, see [../docs/walkthrough.md](../docs/walkthrough.md).
+
 ## Run
 
 ```bash

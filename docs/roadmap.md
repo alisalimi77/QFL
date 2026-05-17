@@ -4,6 +4,8 @@ This roadmap is aspirational and may change. Each phase is intended to stay smal
 
 The current project is alpha. Do not rely on API stability between phases.
 
+For the current end-to-end workflow, see [walkthrough.md](walkthrough.md).
+
 ---
 
 ## Phase 0 — Minimal federated quantum execution

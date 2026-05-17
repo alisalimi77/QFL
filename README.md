@@ -14,6 +14,10 @@ Each quantum client owns a local parameter and runs a simple PennyLane circuit. 
 
 The project is intentionally small. It is a research-infrastructure seed, not a framework. The goal is to make the basic execution, observation, and reproducibility path clear before larger federated quantum infrastructure is introduced.
 
+## Start here
+
+For a step-by-step path through the current workflow, see [docs/walkthrough.md](docs/walkthrough.md).
+
 ## Why this exists
 
 Before Quantum Federated Learning can scale, we need simple ways to execute, observe, and reproduce federated quantum-classical workloads. qfl-mini explores the smallest working building blocks for that direction: local circuit execution, classical coordination, mean aggregation, loss tracking, and reproducibility artifacts.

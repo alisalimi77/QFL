@@ -97,3 +97,5 @@ Saved artifact files
 - No network layer. Clients and coordinators are all in-process. Networking is a future concern.
 
 The goal is that a new reader can understand the full execution path by reading five to ten files of moderate length.
+
+For a command-by-command walkthrough of the full workflow, see [walkthrough.md](walkthrough.md).
