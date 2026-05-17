@@ -90,9 +90,21 @@ PennyLane stays the first and default backend. The interface is intentionally sm
 
 ## Phase 4 — Noise and backend realism
 
-**Status: planned.**
+**Status: started.**
 
-Simple noise models to make simulation results more realistic. Metrics for comparing noisy vs. ideal runs. No hardware required.
+Started:
+
+- `NoisyBackend` — deterministic noisy wrapper around any base backend
+- perturbation formula: `noise * sin(theta + seed)`, clipped to `[-1.0, 1.0]`
+- `get_backend_metadata()` enriched with `base_backend`, `noise`, and `seed` for `NoisyBackend`
+- clean-vs-noisy comparison demo (`run_clean_vs_noisy_backend.py`) with artifact saving
+- `format_clean_vs_noisy_backend_report()` report helper
+
+Remaining planned items:
+
+- noise in manifest experiments
+- metrics aggregating clean-vs-noisy difference across rounds
+- no hardware noise models or density-matrix simulation
 
 ---
 

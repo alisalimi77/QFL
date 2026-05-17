@@ -141,6 +141,40 @@ def format_custom_backend_report(round_result: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def format_clean_vs_noisy_backend_report(run_result: dict[str, Any]) -> str:
+    """Format a clean-vs-noisy backend comparison result as a readable text report.
+
+    Args:
+        run_result: Result dictionary with keys "clean", "noisy", and "difference".
+            Each of "clean" and "noisy" should have "backend" and "result" sub-dicts.
+
+    Returns:
+        A clean human-readable report for the clean-vs-noisy backend demo.
+    """
+    clean_name = run_result["clean"]["backend"]["name"]
+    clean_agg = run_result["clean"]["result"]["aggregated_result"]
+    noisy_name = run_result["noisy"]["backend"]["name"]
+    noisy_agg = run_result["noisy"]["result"]["aggregated_result"]
+    difference = run_result["difference"]
+
+    lines = [
+        "qfl-mini: clean vs noisy backend demo",
+        "",
+        "Clean backend:",
+        f"- backend={clean_name}",
+        f"- aggregated_result={clean_agg:.6f}",
+        "",
+        "Noisy backend:",
+        f"- backend={noisy_name}",
+        f"- aggregated_result={noisy_agg:.6f}",
+        "",
+        "Difference:",
+        f"{difference:.6f}",
+    ]
+
+    return "\n".join(lines)
+
+
 def format_gradient_update_report(update_result: dict[str, Any]) -> str:
     """Format a finite-difference gradient update result as a readable text report.
 

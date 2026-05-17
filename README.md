@@ -31,13 +31,15 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 - not connected to real quantum hardware yet
 - not FedAvg
 - not dataset-based training
+- not a full optimizer framework
+- not automatic-differentiation-based training
 - not an experiment tracking platform
 
 ## Core ideas
 
 **Quantum Client** — a local execution node. In this prototype, a Python object with a local parameter and a backend that runs a PennyLane circuit.
 
-**Quantum Backend** — the object responsible for running a scalar-theta expectation circuit. `PennyLaneBackend` is the only real quantum backend. `ConstantBackend` is a deterministic test/demo backend that always returns a fixed value. The interface is a small seam for future adapters; it is not a plugin system and adds no new dependencies.
+**Quantum Backend** — the object responsible for running a scalar-theta expectation circuit. `PennyLaneBackend` is the only real quantum backend. `ConstantBackend` is a deterministic test/demo backend that always returns a fixed value. `NoisyBackend` wraps any backend and adds a deterministic perturbation (`noise * sin(theta + seed)`) for controlled comparison experiments. The interface is a small seam for future adapters; it is not a plugin system and adds no new dependencies.
 
 **Classical Coordinator** — collects client outputs, applies aggregation, and drives repeated rounds or parameter updates.
 
@@ -72,14 +74,15 @@ See [docs/architecture.md](docs/architecture.md) for the module layout and execu
 
 ## Example progression
 
-| Example                   | Purpose                                                      | Writes artifact? |
-| ------------------------- | ------------------------------------------------------------ | ---------------- |
-| `run_two_clients.py`      | Minimal one-round federated quantum execution                | No               |
-| `run_multi_round.py`      | Repeated coordination with JSON artifact export              | Yes              |
-| `run_parameter_update.py` | Heuristic parameter update with objective/loss tracking      | Yes              |
-| `run_gradient_update.py`  | Finite-difference gradient update with reproducible artifact | Yes              |
-| `run_from_manifest.py`    | Run a gradient update experiment from a JSON manifest        | Yes              |
-| `run_custom_backend.py`   | Backend injection demo with `ConstantBackend`                | No               |
+| Example                         | Purpose                                                        | Writes artifact? |
+| ------------------------------- | -------------------------------------------------------------- | ---------------- |
+| `run_two_clients.py`            | Minimal one-round federated quantum execution                  | No               |
+| `run_multi_round.py`            | Repeated coordination with JSON artifact export                | Yes              |
+| `run_parameter_update.py`       | Heuristic parameter update with objective/loss tracking        | Yes              |
+| `run_gradient_update.py`        | Finite-difference gradient update with reproducible artifact   | Yes              |
+| `run_from_manifest.py`          | Run a gradient update experiment from a JSON manifest          | Yes              |
+| `run_custom_backend.py`         | Backend injection demo with `ConstantBackend`                  | No               |
+| `run_clean_vs_noisy_backend.py` | Clean vs. deterministic noisy backend comparison with artifact | Yes              |
 
 ## Installation
 
@@ -249,9 +252,11 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - manifest provenance recorded in artifacts (`manifest_path`)
 - minimal backend interface (`QuantumBackend` protocol, `PennyLaneBackend`)
 - `ConstantBackend` for tests and demos
-- `get_backend_metadata()` helper
+- `get_backend_metadata()` helper with richer metadata for `ConstantBackend` and `NoisyBackend`
 - backend metadata recorded in manifest-run artifacts
 - custom backend injection demo (`run_custom_backend.py`)
+- `NoisyBackend` — deterministic noisy wrapper (`noise * sin(theta + seed)`, clipped to `[-1.0, 1.0]`)
+- clean-vs-noisy backend comparison demo (`run_clean_vs_noisy_backend.py`) with artifact saving
 
 **Not implemented yet:**
 
@@ -261,9 +266,10 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - richer artifact comparison
 - dashboard or plotting tools
 - backend selection in manifests
-- backend metadata in artifacts
 - Qiskit / Braket / Cirq adapters
 - real hardware execution
+- hardware noise models or density-matrix simulation
+- stochastic noise
 - datasets
 - FedAvg
 - full QFL training
@@ -274,9 +280,9 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 ```text
 Phase 0: minimal federated quantum execution                      [done]
 Phase 1: parameter updates, loss tracking, gradient demo          [done]
-Phase 2: experiment manifests (JSON manifest v0 started)          [in progress]
-Phase 3: backend adapters (minimal interface started)             [in progress]
-Phase 4: noise and backend realism
+Phase 2: experiment manifests (JSON manifest v0)                  [done]
+Phase 3: backend adapters (PennyLaneBackend, ConstantBackend)     [done]
+Phase 4: noise and backend realism (NoisyBackend started)         [in progress]
 Phase 5: richer QFL training examples
 Phase 6: optional real hardware integration
 ```

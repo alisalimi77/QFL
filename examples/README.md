@@ -1,14 +1,15 @@
 # Examples
 
-| Example                   | What it demonstrates                                                  | Writes artifact? |
-| ------------------------- | --------------------------------------------------------------------- | ---------------- |
-| `run_two_clients.py`      | One-round federated quantum execution                                 | No               |
-| `run_multi_round.py`      | Multi-round coordination                                              | Yes              |
-| `run_parameter_update.py` | Heuristic parameter update + loss tracking                            | Yes              |
-| `run_gradient_update.py`  | Finite-difference gradient update                                     | Yes              |
-| `run_from_manifest.py`    | Runs a supported experiment from a JSON manifest                      | Yes              |
-| `compare_artifacts.py`    | Compares saved JSON artifacts from multiple runs                      | No               |
-| `run_custom_backend.py`   | Backend injection with a deterministic `ConstantBackend`              | No               |
+| Example                          | What it demonstrates                                                  | Writes artifact? |
+| -------------------------------- | --------------------------------------------------------------------- | ---------------- |
+| `run_two_clients.py`             | One-round federated quantum execution                                 | No               |
+| `run_multi_round.py`             | Multi-round coordination                                              | Yes              |
+| `run_parameter_update.py`        | Heuristic parameter update + loss tracking                            | Yes              |
+| `run_gradient_update.py`         | Finite-difference gradient update                                     | Yes              |
+| `run_from_manifest.py`           | Runs a supported experiment from a JSON manifest                      | Yes              |
+| `compare_artifacts.py`           | Compares saved JSON artifacts from multiple runs                      | No               |
+| `run_custom_backend.py`          | Backend injection with a deterministic `ConstantBackend`              | No               |
+| `run_clean_vs_noisy_backend.py`  | Clean vs. deterministic noisy backend comparison                      | Yes              |
 
 For a guided sequence through these examples, see [../docs/walkthrough.md](../docs/walkthrough.md).
 
@@ -21,6 +22,7 @@ python examples/run_parameter_update.py
 python examples/run_gradient_update.py
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_custom_backend.py
+python examples/run_clean_vs_noisy_backend.py
 ```
 
 Artifact-producing examples write timestamped JSON files under `runs/`.
@@ -45,6 +47,12 @@ python examples/run_from_manifest.py examples/manifests/gradient_update.json
 
 ```bash
 python examples/run_custom_backend.py
+```
+
+**`run_clean_vs_noisy_backend.py`** — runs two coordinated rounds side by side: one with `PennyLaneBackend` (clean) and one with `NoisyBackend` wrapping `PennyLaneBackend`. Prints both aggregated results and their difference. Saves a JSON artifact.
+
+```bash
+python examples/run_clean_vs_noisy_backend.py
 ```
 
 The examples form a progression from the simplest possible execution toward a minimal gradient-based optimization trace. They are demos, not a training framework.

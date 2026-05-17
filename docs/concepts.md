@@ -18,11 +18,12 @@ Later versions could map a client to a different simulator backend, a cloud API,
 
 A backend is the object responsible for running a scalar-theta expectation circuit and returning a float. `QuantumClient` delegates circuit execution to its backend via `backend.run_expectation(theta)`.
 
-Three backend-related objects exist:
+Four backend-related objects exist:
 
 - **`PennyLaneBackend`** — the only real quantum backend. Calls `run_single_qubit_expectation` from `circuits.py`. Default backend for all clients.
 - **`ConstantBackend`** — a deterministic backend that always returns a fixed value regardless of theta. Intended for tests and demos only; not a quantum simulator.
-- **`get_backend_metadata(backend)`** — returns `{"name": ..., "class": ...}` for any backend. Used to record which backend ran a manifest experiment.
+- **`NoisyBackend`** — a deterministic noisy wrapper around another backend. Adds a controlled perturbation to the base result. See "Deterministic Noise" below.
+- **`get_backend_metadata(backend)`** — returns a `dict[str, str]` with `name`, `class`, and optional extra fields for each backend type. Used to record which backend ran an experiment.
 
 The `QuantumBackend` protocol creates a seam for future adapters. It is not a plugin system and adds no new runtime dependencies.
 
@@ -62,6 +63,19 @@ loss = (aggregated_result - target)^2
 ```
 
 This is for observability only. It is not full training. The target is a fixed scalar, not a dataset.
+
+## Deterministic Noise
+
+`NoisyBackend` wraps any base backend and applies a deterministic perturbation to its output:
+
+```text
+noise_value = noise * sin(theta + seed)
+result = clip(base_result + noise_value, -1.0, 1.0)
+```
+
+The perturbation is fully determined by `theta`, `noise`, and `seed` — no random module is used. The output is clipped to `[-1.0, 1.0]` to stay within valid expectation-value range.
+
+This is a controlled demo backend, not a hardware noise model. It is useful for comparing clean and noisy execution in a reproducible way: given the same inputs, the noisy result is always the same. The `run_clean_vs_noisy_backend.py` example demonstrates this pattern.
 
 ## Finite-Difference Gradient
 

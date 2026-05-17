@@ -4,18 +4,18 @@ qfl-mini is intentionally small. The design keeps each concern in a separate mod
 
 ## Module layout
 
-| Module            | Role                                                                          |
-| ----------------- | ----------------------------------------------------------------------------- |
-| `circuits.py`     | PennyLane circuit definition and execution                                    |
-| `backends.py`     | Backend protocol, `PennyLaneBackend`, `ConstantBackend`, and metadata helper  |
-| `client.py`       | Quantum client abstraction (`QuantumClient`)                                  |
-| `coordinator.py`  | Basic multi-round coordination and mean aggregation                           |
-| `optimization.py` | Parameter and gradient update coordinators                                    |
-| `reporting.py`    | Human-readable report formatters                                              |
-| `metadata.py`     | Run ID generation and environment metadata collection                         |
-| `artifacts.py`    | JSON artifact path resolution and saving                                      |
-| `manifest.py`     | Loading and validating minimal JSON experiment manifests                      |
-| `comparison.py`   | Loading, summarizing, and formatting saved artifact comparisons               |
+| Module            | Role                                                                                         |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `circuits.py`     | PennyLane circuit definition and execution                                                   |
+| `backends.py`     | Backend protocol, `PennyLaneBackend`, `ConstantBackend`, `NoisyBackend`, and metadata helper |
+| `client.py`       | Quantum client abstraction (`QuantumClient`)                                                 |
+| `coordinator.py`  | Basic multi-round coordination and mean aggregation                                          |
+| `optimization.py` | Parameter and gradient update coordinators                                                   |
+| `reporting.py`    | Human-readable report formatters                                                             |
+| `metadata.py`     | Run ID generation and environment metadata collection                                        |
+| `artifacts.py`    | JSON artifact path resolution and saving                                                     |
+| `manifest.py`     | Loading and validating minimal JSON experiment manifests                                     |
+| `comparison.py`   | Loading, summarizing, and formatting saved artifact comparisons                              |
 
 ## Execution flow
 
@@ -33,7 +33,11 @@ Coordinator / ParameterUpdateCoordinator / FiniteDifferenceGradientCoordinator
   -> returns structured round trace
 ```
 
-The backend interface (`QuantumBackend`) is a small seam between `QuantumClient` and the circuit implementation. It is not a plugin system and adds no new runtime dependencies. Currently only `PennyLaneBackend` exists.
+The backend interface (`QuantumBackend`) is a small seam between `QuantumClient` and the circuit implementation. It is not a plugin system and adds no new runtime dependencies. `PennyLaneBackend` is the only real quantum backend. `ConstantBackend` and `NoisyBackend` are deterministic support backends for tests and controlled examples.
+
+```text
+PennyLaneBackend -> NoisyBackend wrapper -> QuantumClient -> Coordinator -> artifact
+```
 
 ## Artifact flow
 
@@ -52,6 +56,14 @@ save_json_artifact(artifact, artifact_path)
   -> creates runs/ directory if needed
   -> writes JSON with 2-space indentation
   -> returns final path
+```
+
+The clean-vs-noisy backend demo stores both backend metadata blocks under the
+artifact run payload:
+
+```text
+run.clean.backend -> get_backend_metadata(PennyLaneBackend())
+run.noisy.backend -> get_backend_metadata(NoisyBackend(PennyLaneBackend(), ...))
 ```
 
 ## Manifest flow

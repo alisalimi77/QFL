@@ -29,9 +29,9 @@ from qflmini.manifest import (
     load_json_manifest,
     validate_gradient_update_manifest,
 )
-from qflmini.backends import ConstantBackend, PennyLaneBackend, get_backend_metadata
+from qflmini.backends import ConstantBackend, NoisyBackend, PennyLaneBackend, get_backend_metadata
 from qflmini.optimization import FiniteDifferenceGradientCoordinator, ParameterUpdateCoordinator
-from qflmini.reporting import format_custom_backend_report
+from qflmini.reporting import format_clean_vs_noisy_backend_report, format_custom_backend_report
 
 
 def test_quantum_client_run_returns_expected_keys() -> None:
@@ -882,3 +882,154 @@ def test_format_custom_backend_report_contains_expected_content() -> None:
     assert "0.200000" in output
     assert "0.600000" in output
     assert "0.400000" in output
+
+
+# --- NoisyBackend behavior tests ---
+
+
+def test_noisy_backend_rejects_negative_noise() -> None:
+    with pytest.raises(ValueError, match="noise must be >= 0"):
+        NoisyBackend(base_backend=ConstantBackend(0.5), noise=-0.1)
+
+
+def test_noisy_backend_is_deterministic() -> None:
+    backend = NoisyBackend(base_backend=ConstantBackend(0.5), noise=0.1, seed=1)
+
+    result_a = backend.run_expectation(0.3)
+    result_b = backend.run_expectation(0.3)
+
+    assert result_a == result_b
+
+
+def test_noisy_backend_clips_upper_bound() -> None:
+    backend = NoisyBackend(base_backend=ConstantBackend(1.0), noise=1.0, seed=0)
+
+    result = backend.run_expectation(1.0)
+
+    assert result == pytest.approx(1.0)
+
+
+def test_noisy_backend_clips_lower_bound() -> None:
+    backend = NoisyBackend(base_backend=ConstantBackend(-1.0), noise=1.0, seed=0)
+
+    result = backend.run_expectation(-1.0)
+
+    assert result == pytest.approx(-1.0)
+
+
+def test_noisy_backend_output_differs_from_base() -> None:
+    base = ConstantBackend(0.5)
+    noisy = NoisyBackend(base_backend=ConstantBackend(0.5), noise=0.1, seed=7)
+
+    theta = 1.0
+    base_result = base.run_expectation(theta)
+    noisy_result = noisy.run_expectation(theta)
+
+    assert base_result != pytest.approx(noisy_result)
+
+
+# --- Backend metadata for NoisyBackend and ConstantBackend ---
+
+
+def test_noisy_backend_metadata_has_expected_keys() -> None:
+    backend = NoisyBackend(base_backend=PennyLaneBackend(), noise=0.05, seed=42)
+
+    meta = get_backend_metadata(backend)
+
+    assert meta["name"] == "noisy"
+    assert meta["class"] == "NoisyBackend"
+    assert meta["base_backend"] == "pennylane"
+    assert meta["noise"] == "0.05"
+    assert meta["seed"] == "42"
+
+
+def test_constant_backend_metadata_has_value_key() -> None:
+    backend = ConstantBackend(0.77)
+
+    meta = get_backend_metadata(backend)
+
+    assert meta["name"] == "constant"
+    assert meta["class"] == "ConstantBackend"
+    assert meta["value"] == "0.77"
+
+
+# --- clean-vs-noisy report tests ---
+
+
+def test_format_clean_vs_noisy_backend_report_contains_expected_content() -> None:
+    clean_backend = PennyLaneBackend()
+    noisy_backend = NoisyBackend(base_backend=PennyLaneBackend(), noise=0.05, seed=42)
+    clean_clients = [
+        QuantumClient("client_1", theta=0.2, backend=clean_backend),
+        QuantumClient("client_2", theta=0.8, backend=clean_backend),
+    ]
+    noisy_clients = [
+        QuantumClient("client_1", theta=0.2, backend=noisy_backend),
+        QuantumClient("client_2", theta=0.8, backend=noisy_backend),
+    ]
+    clean_result = Coordinator(clean_clients).run_round()
+    noisy_result = Coordinator(noisy_clients).run_round()
+    difference = noisy_result["aggregated_result"] - clean_result["aggregated_result"]
+    run_result = {
+        "clean": {"backend": get_backend_metadata(clean_backend), "result": clean_result},
+        "noisy": {"backend": get_backend_metadata(noisy_backend), "result": noisy_result},
+        "difference": difference,
+    }
+
+    output = format_clean_vs_noisy_backend_report(run_result)
+
+    assert "clean vs noisy backend demo" in output
+    assert "backend=pennylane" in output
+    assert "backend=noisy" in output
+    assert "Difference:" in output
+
+
+# --- clean-vs-noisy artifact shape tests ---
+
+
+def test_clean_vs_noisy_run_result_has_expected_structure() -> None:
+    clean_backend = PennyLaneBackend()
+    noisy_backend = NoisyBackend(base_backend=PennyLaneBackend(), noise=0.05, seed=42)
+    clean_clients = [QuantumClient("c1", theta=0.3, backend=clean_backend)]
+    noisy_clients = [QuantumClient("c1", theta=0.3, backend=noisy_backend)]
+    clean_result = Coordinator(clean_clients).run_round()
+    noisy_result = Coordinator(noisy_clients).run_round()
+    run_result = {
+        "clean": {"backend": get_backend_metadata(clean_backend), "result": clean_result},
+        "noisy": {"backend": get_backend_metadata(noisy_backend), "result": noisy_result},
+        "difference": noisy_result["aggregated_result"] - clean_result["aggregated_result"],
+    }
+
+    assert "clean" in run_result
+    assert "noisy" in run_result
+    assert "difference" in run_result
+    assert run_result["clean"]["backend"]["name"] == "pennylane"
+    assert run_result["noisy"]["backend"]["name"] == "noisy"
+    assert run_result["noisy"]["backend"]["base_backend"] == "pennylane"
+    assert isinstance(run_result["difference"], float)
+
+
+def test_clean_vs_noisy_artifact_contains_backend_metadata(tmp_path) -> None:
+    clean_backend = PennyLaneBackend()
+    noisy_backend = NoisyBackend(base_backend=PennyLaneBackend(), noise=0.05, seed=42)
+    clean_result = Coordinator(
+        [QuantumClient("c1", theta=0.3, backend=clean_backend)]
+    ).run_round()
+    noisy_result = Coordinator(
+        [QuantumClient("c1", theta=0.3, backend=noisy_backend)]
+    ).run_round()
+    run_result = {
+        "clean": {"backend": get_backend_metadata(clean_backend), "result": clean_result},
+        "noisy": {"backend": get_backend_metadata(noisy_backend), "result": noisy_result},
+        "difference": noisy_result["aggregated_result"] - clean_result["aggregated_result"],
+    }
+    artifact = build_run_artifact("run_clean_vs_noisy_backend", run_result)
+    artifact_path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
+
+    saved_path = save_json_artifact(artifact, artifact_path)
+
+    saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
+    assert saved_data["run"]["clean"]["backend"]["name"] == "pennylane"
+    assert saved_data["run"]["noisy"]["backend"]["name"] == "noisy"
+    assert saved_data["run"]["noisy"]["backend"]["base_backend"] == "pennylane"
+    assert "difference" in saved_data["run"]

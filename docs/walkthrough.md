@@ -188,11 +188,11 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_target_h
 python examples/run_from_manifest.py examples/manifests/gradient_update_more_rounds.json
 ```
 
-| Manifest                             | Name                      | What changes              |
-| ------------------------------------ | ------------------------- | ------------------------- |
-| `gradient_update.json`               | `default-gradient-update` | Default settings          |
-| `gradient_update_low_lr.json`        | `low-learning-rate`       | Smaller learning rate     |
-| `gradient_update_target_half.json`   | `target-half`             | Non-zero target (0.5)     |
+| Manifest                             | Name                      | What changes                 |
+| ------------------------------------ | ------------------------- | ---------------------------- |
+| `gradient_update.json`               | `default-gradient-update` | Default settings             |
+| `gradient_update_low_lr.json`        | `low-learning-rate`       | Smaller learning rate        |
+| `gradient_update_target_half.json`   | `target-half`             | Non-zero target (0.5)        |
 | `gradient_update_more_rounds.json`   | `more-rounds`             | Five rounds instead of three |
 
 Each run produces a separate artifact under `runs/`.
@@ -295,7 +295,47 @@ Backend injection requires no manifest changes. Pass any object that implements
 
 ---
 
-## 11. Run checks
+## 11. Run the clean-vs-noisy backend demo
+
+```bash
+python examples/run_clean_vs_noisy_backend.py
+```
+
+This example runs two coordinated rounds side by side using the same clients and thetas:
+one with `PennyLaneBackend` (clean) and one with `NoisyBackend` wrapping `PennyLaneBackend`.
+
+`NoisyBackend` applies a deterministic perturbation to the base result:
+
+```text
+noise_value = noise * sin(theta + seed)
+result = clip(base_result + noise_value, -1.0, 1.0)
+```
+
+No randomness is used. Given the same `theta`, `noise`, and `seed`, the noisy result is always identical.
+
+Expected output (values depend on PennyLane version):
+
+```text
+qfl-mini: clean vs noisy backend demo
+
+Clean backend:
+- backend=pennylane
+- aggregated_result=0.838387
+
+Noisy backend:
+- backend=noisy
+- aggregated_result=0.790807
+
+Difference:
+-0.047580
+Saved artifact: runs/run_clean_vs_noisy_backend_<timestamp>.json
+```
+
+The artifact records backend metadata for both the clean and noisy backends so runs are fully traceable.
+
+---
+
+## 12. Run checks
 
 ```bash
 python -m compileall qflmini examples
@@ -307,13 +347,14 @@ pytest
 
 ---
 
-## 12. Where this leaves the project
+## 13. Where this leaves the project
 
 ```text
 Phase 0: minimal execution                            [done]
 Phase 1: parameter/loss/gradient traces               [done]
 Phase 2: manifest/artifact/comparison workflow        [done]
-Phase 3: backend abstraction                          [active]
+Phase 3: backend abstraction                          [done]
+Phase 4: noise and backend realism                    [active]
 ```
 
 **What the project can do now:**
@@ -327,18 +368,17 @@ Phase 3: backend abstraction                          [active]
 - save timestamped reproducibility artifacts
 - compare artifacts in a plain text table
 - inject a custom backend in Python
-- record backend metadata in manifest-run artifacts
+- record backend metadata in artifacts
+- run a deterministic noisy backend and compare clean vs. noisy results
 
 **What is intentionally not supported:**
 
 - Qiskit, Braket, Cirq adapters
 - real quantum hardware execution
 - backend selection in manifests
-- noise models
+- hardware noise models or density-matrix simulation
 - FedAvg
 - dataset-based training
 - full QFL training
 - dashboard or experiment tracking server
 - plugin system
-
-The next natural direction is adding controlled backend realism, such as a small noisy backend demo, while keeping the project minimal.
