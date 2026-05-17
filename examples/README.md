@@ -54,18 +54,18 @@ Then compare them:
 python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
 ```
 
-`compare_artifacts.py` is dependency-free. It prints run_id, example, experiment, rounds, final_theta, and final_loss for each artifact in a plain text table. It is not a dashboard or experiment tracking system.
+`compare_artifacts.py` is dependency-free. It prints run_id, manifest name, experiment, rounds, final_theta, and final_loss for each artifact in a plain text table. It is not a dashboard or experiment tracking system.
 
 ## Manifest examples
 
-| Manifest                             | Purpose                                      |
-| ------------------------------------ | -------------------------------------------- |
-| `gradient_update.json`               | Default finite-difference gradient update    |
-| `gradient_update_low_lr.json`        | Same experiment with a smaller learning rate |
-| `gradient_update_target_half.json`   | Same experiment with a non-zero target       |
-| `gradient_update_more_rounds.json`   | Same experiment with more update rounds      |
+| Manifest                             | Name                      | Purpose                                      |
+| ------------------------------------ | ------------------------- | -------------------------------------------- |
+| `gradient_update.json`               | `default-gradient-update` | Default finite-difference gradient update    |
+| `gradient_update_low_lr.json`        | `low-learning-rate`       | Same experiment with a smaller learning rate |
+| `gradient_update_target_half.json`   | `target-half`             | Same experiment with a non-zero target       |
+| `gradient_update_more_rounds.json`   | `more-rounds`             | Same experiment with more update rounds      |
 
-All currently supported manifests use `"experiment": "gradient_update"`. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
+All manifests use `"manifest_version": "0.1"` and `"experiment": "gradient_update"`. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json

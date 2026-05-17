@@ -1,4 +1,7 @@
 {
+  "manifest_version": "0.1",
+  "name": "more-rounds",
+  "description": "Finite-difference gradient update with more update rounds.",
   "experiment": "gradient_update",
   "num_clients": 2,
   "num_rounds": 5,

@@ -377,6 +377,9 @@ def test_gradient_coordinator_artifact_save(tmp_path) -> None:
 # --- manifest tests ---
 
 _VALID_MANIFEST = {
+    "manifest_version": "0.1",
+    "name": "test-manifest",
+    "description": "A test manifest.",
     "experiment": "gradient_update",
     "num_clients": 2,
     "num_rounds": 3,
@@ -408,6 +411,9 @@ def test_load_json_manifest_rejects_non_object(tmp_path) -> None:
 def test_validate_gradient_update_manifest_returns_normalized_values() -> None:
     config = validate_gradient_update_manifest(_VALID_MANIFEST)
 
+    assert config["manifest_version"] == "0.1"
+    assert config["name"] == "test-manifest"
+    assert config["description"] == "A test manifest."
     assert config["experiment"] == "gradient_update"
     assert isinstance(config["num_clients"], int)
     assert isinstance(config["num_rounds"], int)
@@ -503,6 +509,51 @@ def test_manifest_run_artifact_shape(tmp_path) -> None:
     assert saved_data["run"]["manifest"]["experiment"] == "gradient_update"
 
 
+def test_validate_manifest_missing_manifest_version_raises() -> None:
+    bad = dict(_VALID_MANIFEST)
+    del bad["manifest_version"]
+
+    with pytest.raises(ValueError, match="manifest_version"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_manifest_unsupported_version_raises() -> None:
+    bad = dict(_VALID_MANIFEST, manifest_version="0.2")
+
+    with pytest.raises(ValueError, match="manifest_version"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_manifest_missing_name_raises() -> None:
+    bad = dict(_VALID_MANIFEST)
+    del bad["name"]
+
+    with pytest.raises(ValueError, match="name"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_manifest_blank_name_raises() -> None:
+    bad = dict(_VALID_MANIFEST, name="   ")
+
+    with pytest.raises(ValueError, match="name"):
+        validate_gradient_update_manifest(bad)
+
+
+def test_validate_manifest_missing_description_normalizes_to_empty_string() -> None:
+    without_desc = {k: v for k, v in _VALID_MANIFEST.items() if k != "description"}
+
+    config = validate_gradient_update_manifest(without_desc)
+
+    assert config["description"] == ""
+
+
+def test_validate_manifest_non_string_description_raises() -> None:
+    bad = dict(_VALID_MANIFEST, description=42)
+
+    with pytest.raises(ValueError, match="description"):
+        validate_gradient_update_manifest(bad)
+
+
 def test_all_example_manifests_are_valid() -> None:
     manifest_dir = Path(__file__).resolve().parents[1] / "examples" / "manifests"
     manifest_files = sorted(manifest_dir.glob("*.json"))
@@ -537,6 +588,8 @@ _MANIFEST_ARTIFACT = {
     "example": "run_from_manifest_gradient_update",
     "run": {
         "manifest": {
+            "manifest_version": "0.1",
+            "name": "more-rounds",
             "experiment": "gradient_update",
             "num_rounds": 5,
         },
@@ -588,6 +641,8 @@ def test_summarize_artifact_manifest_shape() -> None:
     summary = summarize_artifact(_MANIFEST_ARTIFACT)
 
     assert summary["experiment"] == "gradient_update"
+    assert summary["manifest_name"] == "more-rounds"
+    assert summary["manifest_version"] == "0.1"
     assert summary["num_rounds"] == 5
     assert summary["final_theta"] == pytest.approx(0.972194)
     assert summary["final_loss"] == pytest.approx(0.412106)
@@ -599,6 +654,8 @@ def test_summarize_artifact_handles_missing_fields() -> None:
     assert summary["run_id"] == "unknown"
     assert summary["example"] == "unknown"
     assert summary["experiment"] == "unknown"
+    assert summary["manifest_name"] == "unknown"
+    assert summary["manifest_version"] == "unknown"
     assert summary["num_rounds"] is None
     assert summary["final_theta"] is None
     assert summary["final_loss"] is None
@@ -636,7 +693,7 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
     output = format_artifact_comparison(summaries)
 
     assert "qfl-mini: artifact comparison" in output
-    assert "run_gradient_update" in output
+    assert "more-rounds" in output
     assert "0.773778" in output
     assert "0.608376" in output
     assert "0.972194" in output

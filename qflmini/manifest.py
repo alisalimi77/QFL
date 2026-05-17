@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+SUPPORTED_MANIFEST_VERSION = "0.1"
+
 
 def load_json_manifest(path: str | Path) -> dict[str, Any]:
     """Load a JSON manifest file and return it as a dictionary.
@@ -43,6 +45,8 @@ def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any
         ValueError: If any required field is missing or invalid.
     """
     required_fields = (
+        "manifest_version",
+        "name",
         "experiment",
         "num_clients",
         "num_rounds",
@@ -54,6 +58,25 @@ def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any
     for field in required_fields:
         if field not in manifest:
             raise ValueError(f"Manifest is missing required field: '{field}'.")
+
+    manifest_version = manifest["manifest_version"]
+    if not isinstance(manifest_version, str) or manifest_version != SUPPORTED_MANIFEST_VERSION:
+        raise ValueError(
+            f"Unsupported manifest_version: expected '{SUPPORTED_MANIFEST_VERSION}', "
+            f"got '{manifest_version}'."
+        )
+
+    name = manifest["name"]
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("'name' must be a non-empty string.")
+
+    description_raw = manifest.get("description")
+    if description_raw is None:
+        description = ""
+    elif not isinstance(description_raw, str):
+        raise ValueError("'description' must be a string if provided.")
+    else:
+        description = description_raw.strip()
 
     experiment = manifest["experiment"]
     if experiment != "gradient_update":
@@ -94,6 +117,9 @@ def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any
         raise ValueError("'epsilon' must be positive.")
 
     return {
+        "manifest_version": SUPPORTED_MANIFEST_VERSION,
+        "name": name.strip(),
+        "description": description,
         "experiment": str(experiment),
         "num_clients": int(num_clients),
         "num_rounds": int(num_rounds),

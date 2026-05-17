@@ -55,7 +55,8 @@ save_json_artifact(artifact, artifact_path)
 ```text
 JSON manifest file
   -> load_json_manifest()      reads and parses JSON
-  -> validate_gradient_update_manifest()  checks types and constraints
+  -> validate_gradient_update_manifest()  checks types and constraints,
+       normalizes manifest_version, name, description, and numeric fields
   -> returns normalized config dict
 
 config dict
@@ -72,8 +73,9 @@ config dict
 ```text
 Saved artifact files
   -> load_artifact()          reads and validates JSON
-  -> summarize_artifact()     extracts run_id, experiment, num_rounds, final_theta, final_loss
-  -> format_artifact_comparison()  produces a plain text summary table
+  -> summarize_artifact()     extracts run_id, experiment, manifest_name,
+                              manifest_version, num_rounds, final_theta, final_loss
+  -> format_artifact_comparison()  produces a plain text table (manifest name column)
 ```
 
 ## Why the design is intentionally small

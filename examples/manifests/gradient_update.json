@@ -1,4 +1,7 @@
 {
+  "manifest_version": "0.1",
+  "name": "default-gradient-update",
+  "description": "Default finite-difference gradient update experiment.",
   "experiment": "gradient_update",
   "num_clients": 2,
   "num_rounds": 3,

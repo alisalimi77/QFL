@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 _MAX_RUN_ID_WIDTH = 46
-_MAX_EXAMPLE_WIDTH = 34
+_MAX_MANIFEST_WIDTH = 25
 
 
 def load_artifact(path: str | Path) -> dict[str, Any]:
@@ -42,8 +42,9 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
         artifact: Artifact dictionary loaded from a JSON file.
 
     Returns:
-        A summary dictionary with keys: run_id, example, experiment, num_rounds,
-        final_theta, final_loss. Missing fields are represented as None or "unknown".
+        A summary dictionary with keys: run_id, example, experiment, manifest_name,
+        manifest_version, num_rounds, final_theta, final_loss. Missing fields are
+        represented as None or "unknown".
     """
     run_id = artifact.get("run_id", "unknown")
     example = artifact.get("example", "unknown")
@@ -65,6 +66,10 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     else:
         experiment = "unknown"
 
+    # manifest metadata
+    manifest_name = manifest_data.get("name", "unknown")
+    manifest_version = manifest_data.get("manifest_version", "unknown")
+
     # num_rounds
     num_rounds = result_data.get("num_rounds", manifest_data.get("num_rounds"))
 
@@ -82,6 +87,8 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
         "run_id": run_id,
         "example": example,
         "experiment": experiment,
+        "manifest_name": manifest_name,
+        "manifest_version": manifest_version,
         "num_rounds": num_rounds,
         "final_theta": final_theta,
         "final_loss": final_loss,
@@ -131,12 +138,12 @@ def format_artifact_comparison(summaries: list[dict[str, Any]]) -> str:
             return "n/a"
         return str(int(value))
 
-    headers = ["run_id", "example", "experiment", "rounds", "final_theta", "final_loss"]
+    headers = ["run_id", "manifest", "experiment", "rounds", "final_theta", "final_loss"]
 
     rows = [
         [
             _trunc(s["run_id"], _MAX_RUN_ID_WIDTH),
-            _trunc(s["example"], _MAX_EXAMPLE_WIDTH),
+            _trunc(s["manifest_name"], _MAX_MANIFEST_WIDTH),
             str(s["experiment"]),
             _fmt_int(s["num_rounds"]),
             _fmt_float(s["final_theta"]),

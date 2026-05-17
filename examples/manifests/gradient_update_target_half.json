@@ -1,4 +1,7 @@
 {
+  "manifest_version": "0.1",
+  "name": "target-half",
+  "description": "Finite-difference gradient update with a non-zero target.",
   "experiment": "gradient_update",
   "num_clients": 2,
   "num_rounds": 3,

@@ -101,6 +101,9 @@ The manifest describes the experiment declaratively:
 
 ```json
 {
+  "manifest_version": "0.1",
+  "name": "default-gradient-update",
+  "description": "Default finite-difference gradient update experiment.",
   "experiment": "gradient_update",
   "num_clients": 2,
   "num_rounds": 3,
@@ -111,16 +114,19 @@ The manifest describes the experiment declaratively:
 }
 ```
 
-This is the first minimal manifest path. Only `gradient_update` manifests are supported for now. JSON only — no YAML, no general config system. Output is still a timestamped artifact under `runs/`.
+- `manifest_version` is currently `"0.1"`
+- `name` gives each manifest a human-readable identifier visible in artifact comparison output
+- `description` documents the manifest's purpose (optional)
+- only `gradient_update` is supported for now; JSON only
 
-Several example manifests are provided to show how different parameter settings can be declared without changing Python code:
+Several example manifests are provided:
 
-| Manifest                             | What changes        |
-| ------------------------------------ | ------------------- |
-| `gradient_update.json`               | Default settings    |
-| `gradient_update_low_lr.json`        | Lower learning rate |
-| `gradient_update_target_half.json`   | Non-zero target     |
-| `gradient_update_more_rounds.json`   | More rounds         |
+| File                               | Name                      | What changes        |
+| ---------------------------------- | ------------------------- | ------------------- |
+| `gradient_update.json`             | `default-gradient-update` | Default settings    |
+| `gradient_update_low_lr.json`      | `low-learning-rate`       | Lower learning rate |
+| `gradient_update_target_half.json` | `target-half`             | Non-zero target     |
+| `gradient_update_more_rounds.json` | `more-rounds`             | More rounds         |
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update_low_lr.json
@@ -139,9 +145,9 @@ Example output:
 ```text
 qfl-mini: artifact comparison
 
-run_id                                          example                             experiment       rounds  final_theta  final_loss
-run_from_manifest_gradient_update_...           run_from_manifest_gradient_upda...  gradient_update  3       0.773778     0.608376
-run_from_manifest_gradient_update_...           run_from_manifest_gradient_upda...  gradient_update  5       0.972194     0.412106
+run_id                                          manifest                   experiment       rounds  final_theta  final_loss
+run_from_manifest_gradient_update_...           default-gradient-update    gradient_update  3       0.773778     0.608376
+run_from_manifest_gradient_update_...           more-rounds                gradient_update  5       0.972194     0.412106
 ```
 
 This is a lightweight comparison helper — no dashboard, no database, no plotting.
@@ -224,8 +230,9 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are implemented.
 - objective/loss tracking
 - finite-difference gradient update demo
 - JSON manifest v0 for gradient update experiments
+- manifest versioning (`manifest_version`) and names (`name`)
 - multiple example manifests for `gradient_update`
-- dependency-free artifact comparison helper
+- dependency-free artifact comparison helper (shows manifest names)
 
 **Not implemented yet:**
 

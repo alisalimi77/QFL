@@ -84,7 +84,13 @@ It is intentionally plain text and dependency-free. It is not a dashboard, not a
 
 A manifest is a small JSON file that declares the parameters for a supported experiment — number of clients, rounds, initial theta, learning rate, target, and epsilon. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.
 
-In the current version, manifests are limited to finite-difference gradient update experiments. Multiple example manifests live under `examples/manifests/` to show how different parameter settings can be declared and compared.
+Each manifest includes:
+
+- `manifest_version` — currently `"0.1"`. Required. Controls which validation rules apply.
+- `name` — a short human-readable identifier such as `"default-gradient-update"`. Required. Appears in artifact comparison output so runs can be told apart at a glance.
+- `description` — a sentence explaining what the manifest does. Optional; defaults to empty string.
+
+In the current version, manifests are limited to finite-difference gradient update experiments. Multiple example manifests live under `examples/manifests/`.
 
 ## Run ID
 

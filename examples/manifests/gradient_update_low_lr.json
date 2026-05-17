@@ -1,4 +1,7 @@
 {
+  "manifest_version": "0.1",
+  "name": "low-learning-rate",
+  "description": "Finite-difference gradient update with a smaller learning rate.",
   "experiment": "gradient_update",
   "num_clients": 2,
   "num_rounds": 3,
