@@ -6,6 +6,7 @@
 | `run_multi_round.py`             | Multi-round coordination                                              | Yes              |
 | `run_parameter_update.py`        | Heuristic parameter update + loss tracking                            | Yes              |
 | `run_gradient_update.py`         | Finite-difference gradient update                                     | Yes              |
+| `run_client_objectives.py`       | Evaluates local client-specific objectives and mean local loss         | Yes              |
 | `run_from_manifest.py`           | Runs a supported experiment from a JSON manifest                      | Yes              |
 | `compare_artifacts.py`           | Compares saved JSON artifacts from multiple runs                      | No               |
 | `run_custom_backend.py`          | Backend injection with a deterministic `ConstantBackend`              | No               |
@@ -20,6 +21,7 @@ python examples/run_two_clients.py
 python examples/run_multi_round.py
 python examples/run_parameter_update.py
 python examples/run_gradient_update.py
+python examples/run_client_objectives.py
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
@@ -39,6 +41,8 @@ Generated artifact JSON files are ignored by git; `runs/.gitkeep` keeps the dire
 **`run_parameter_update.py`** — runs a heuristic parameter update loop. Each round applies the rule `next_theta = theta - learning_rate * aggregated_result` and tracks a simple squared loss. Saves a JSON artifact.
 
 **`run_gradient_update.py`** — runs a finite-difference gradient update loop. Each round estimates a gradient using central finite differences and updates `next_theta = theta - learning_rate * gradient`. Saves a JSON artifact.
+
+**`run_client_objectives.py`** — evaluates two client-specific local objectives. Each client has its own target, local loss is computed per client, and the example reports mean local loss. Saves a JSON artifact.
 
 **`run_from_manifest.py`** — loads a JSON manifest file, validates it, and runs the specified experiment. Currently only `gradient_update` manifests are supported. The manifest defines clients, rounds, initial theta, learning rate, target, epsilon, and optionally one built-in backend config. Manifests without `backend` default to PennyLane. Saves a JSON artifact that includes the normalized manifest config, backend metadata, and the run result.
 

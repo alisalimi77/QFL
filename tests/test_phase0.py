@@ -32,8 +32,17 @@ from qflmini.manifest import (
     validate_gradient_update_manifest,
 )
 from qflmini.backends import ConstantBackend, NoisyBackend, PennyLaneBackend, get_backend_metadata
+from qflmini.objectives import (
+    ClientObjective,
+    evaluate_client_objective,
+    evaluate_client_objectives,
+)
 from qflmini.optimization import FiniteDifferenceGradientCoordinator, ParameterUpdateCoordinator
-from qflmini.reporting import format_clean_vs_noisy_backend_report, format_custom_backend_report
+from qflmini.reporting import (
+    format_clean_vs_noisy_backend_report,
+    format_client_objectives_report,
+    format_custom_backend_report,
+)
 
 
 def test_quantum_client_run_returns_expected_keys() -> None:
@@ -936,6 +945,117 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
 def test_format_artifact_comparison_empty_raises() -> None:
     with pytest.raises(ValueError, match="empty"):
         format_artifact_comparison([])
+
+
+# --- client-specific objective tests ---
+
+
+def test_client_objective_is_immutable() -> None:
+    objective = ClientObjective(
+        client=QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.5)),
+        target=0.0,
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        objective.target = 0.5
+
+
+def test_evaluate_client_objective_computes_loss() -> None:
+    objective = ClientObjective(
+        client=QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.5)),
+        target=0.0,
+    )
+
+    result = evaluate_client_objective(objective)
+
+    assert result["client_id"] == "client_1"
+    assert result["result"] == pytest.approx(0.5)
+    assert result["target"] == pytest.approx(0.0)
+    assert result["loss"] == pytest.approx(0.25)
+
+
+def test_evaluate_client_objective_zero_loss_for_matching_target() -> None:
+    objective = ClientObjective(
+        client=QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.5)),
+        target=0.5,
+    )
+
+    result = evaluate_client_objective(objective)
+
+    assert result["loss"] == pytest.approx(0.0)
+
+
+def test_evaluate_client_objectives_computes_means() -> None:
+    result = evaluate_client_objectives(
+        [
+            ClientObjective(
+                QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.2)),
+                target=0.0,
+            ),
+            ClientObjective(
+                QuantumClient("client_2", theta=0.0, backend=ConstantBackend(0.6)),
+                target=0.5,
+            ),
+        ]
+    )
+
+    assert result["num_clients"] == 2
+    assert len(result["client_objectives"]) == 2
+    assert result["aggregated_result"] == pytest.approx(0.4)
+    assert result["mean_local_loss"] == pytest.approx(0.025)
+
+
+def test_evaluate_client_objectives_empty_raises() -> None:
+    with pytest.raises(ValueError, match="objectives"):
+        evaluate_client_objectives([])
+
+
+def test_format_client_objectives_report_contains_expected_content() -> None:
+    result = evaluate_client_objectives(
+        [
+            ClientObjective(
+                QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.2)),
+                target=0.0,
+            ),
+            ClientObjective(
+                QuantumClient("client_2", theta=0.0, backend=ConstantBackend(0.6)),
+                target=0.5,
+            ),
+        ]
+    )
+
+    output = format_client_objectives_report(result)
+
+    assert "client-specific objective demo" in output
+    assert "client_1" in output
+    assert "client_2" in output
+    assert "Mean local loss" in output
+    assert "0.400000" in output
+    assert "0.025000" in output
+
+
+def test_client_objectives_artifact_shape(tmp_path) -> None:
+    result = evaluate_client_objectives(
+        [
+            ClientObjective(
+                QuantumClient("client_1", theta=0.0, backend=ConstantBackend(0.2)),
+                target=0.0,
+            ),
+            ClientObjective(
+                QuantumClient("client_2", theta=0.0, backend=ConstantBackend(0.6)),
+                target=0.5,
+            ),
+        ]
+    )
+    artifact = build_run_artifact("run_client_objectives", result)
+    path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
+
+    saved_path = save_json_artifact(artifact, path)
+    saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
+
+    assert "client_objectives" in saved_data["run"]
+    assert "mean_local_loss" in saved_data["run"]
+    assert "aggregated_result" in saved_data["run"]
 
 
 # --- backend tests ---

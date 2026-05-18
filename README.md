@@ -58,6 +58,8 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 
 **Objective / Loss Tracking** — each parameter update round computes a simple squared loss so progress is observable.
 
+**Client-Specific Objective** — a local objective context where each client compares its own circuit result against its own target. This is a small step toward federated objective evaluation, not dataset-based learning.
+
 **Experiment Manifest** — a JSON v0.1 file that declares a supported `gradient_update` experiment, including optional built-in backend config.
 
 **Reproducibility Artifact** — a timestamped JSON file containing the run trace and environment metadata.
@@ -91,6 +93,7 @@ See [docs/architecture.md](docs/architecture.md) for the module layout and execu
 | `run_multi_round.py`            | Multi-round coordination                                             | Yes              |
 | `run_parameter_update.py`       | Heuristic parameter update + loss tracking                           | Yes              |
 | `run_gradient_update.py`        | Finite-difference gradient update                                    | Yes              |
+| `run_client_objectives.py`      | Client-specific local objectives and mean local loss                 | Yes              |
 | `run_from_manifest.py`          | Run a supported experiment from JSON manifest                        | Yes              |
 | `compare_artifacts.py`          | Compare saved artifacts                                              | No               |
 | `run_custom_backend.py`         | Demonstrate backend injection with `ConstantBackend`                 | No               |
@@ -109,6 +112,7 @@ python examples/run_two_clients.py
 python examples/run_multi_round.py
 python examples/run_parameter_update.py
 python examples/run_gradient_update.py
+python examples/run_client_objectives.py
 ```
 
 Artifact-producing examples write timestamped JSON files under `runs/`.
@@ -290,6 +294,7 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is don
 - heuristic parameter update demo
 - objective/loss tracking
 - finite-difference gradient update demo
+- client-specific objective evaluation and mean local loss
 - JSON manifest v0 for gradient update experiments
 - manifest versioning (`manifest_version`) and names (`name`)
 - multiple example manifests for `gradient_update`
@@ -331,6 +336,7 @@ Phase 1: parameter/loss/gradient traces                           [done]
 Phase 2: manifest/artifact/comparison workflow                    [done/active]
 Phase 3: backend abstraction                                      [active]
 Phase 4: deterministic backend realism and backend-aware manifests [active]
+Phase 5: client-specific objectives                               [started]
 ```
 
 See [docs/roadmap.md](docs/roadmap.md) for the staged roadmap.

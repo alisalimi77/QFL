@@ -376,7 +376,38 @@ The artifact records backend metadata for both the clean and noisy backends so r
 
 ---
 
-## 13. Run checks
+## 13. Run client-specific objectives
+
+```bash
+python examples/run_client_objectives.py
+```
+
+This example gives each client its own local target. Each client runs its local
+quantum circuit, computes a local squared loss against its own target, and the
+run reports both mean aggregation and mean local loss. This is not
+dataset-based training and not FedAvg.
+
+```text
+qfl-mini: client-specific objective demo
+
+Client objectives:
+- client_1 | theta=0.2 | target=0.0 | result=0.980067 | loss=0.960531
+- client_2 | theta=0.8 | target=0.5 | result=0.696707 | loss=0.038693
+
+Aggregated result:
+0.838387
+
+Mean local loss:
+0.499612
+Saved artifact: runs/run_client_objectives_<timestamp>.json
+```
+
+The artifact stores `client_objectives`, `aggregated_result`, and
+`mean_local_loss` under the top-level `run` payload.
+
+---
+
+## 14. Run checks
 
 ```bash
 python -m compileall qflmini examples
@@ -388,7 +419,7 @@ pytest
 
 ---
 
-## 14. Where this leaves the project
+## 15. Where this leaves the project
 
 ```text
 Phase 0: minimal execution                            [done]
@@ -396,6 +427,7 @@ Phase 1: parameter/loss/gradient traces               [done]
 Phase 2: manifest/artifact/comparison workflow        [done/active]
 Phase 3: backend abstraction                          [active]
 Phase 4: deterministic backend realism                [active]
+Phase 5: client-specific objectives                   [started]
 ```
 
 **What the project can do now:**
@@ -412,6 +444,7 @@ Phase 4: deterministic backend realism                [active]
 - inject a custom backend in Python
 - record backend metadata in artifacts
 - run a deterministic noisy backend and compare clean vs. noisy results
+- evaluate client-specific local objectives
 
 **What is intentionally not supported:**
 

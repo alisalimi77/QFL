@@ -11,6 +11,7 @@ qfl-mini is intentionally small. The design keeps each concern in a separate mod
 | `client.py`       | Quantum client abstraction (`QuantumClient`)                                                 |
 | `coordinator.py`  | Basic multi-round coordination and mean aggregation                                          |
 | `optimization.py` | Parameter and gradient update coordinators                                                   |
+| `objectives.py`   | Client-specific objective evaluation helpers                                                 |
 | `reporting.py`    | Human-readable report formatters                                                             |
 | `metadata.py`     | Run ID generation and environment metadata collection                                        |
 | `artifacts.py`    | JSON artifact path resolution and saving                                                     |
@@ -66,6 +67,13 @@ artifact run payload:
 ```text
 run.clean.backend -> get_backend_metadata(PennyLaneBackend())
 run.noisy.backend -> get_backend_metadata(NoisyBackend(PennyLaneBackend(), ...))
+```
+
+Client-specific objective artifacts follow the same artifact wrapper and store
+local objective results under the run payload:
+
+```text
+QuantumClient -> local target -> local loss -> mean local loss artifact
 ```
 
 ## Manifest flow

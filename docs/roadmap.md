@@ -112,11 +112,24 @@ Remaining planned items:
 
 ---
 
-## Phase 5 — Federated quantum training examples
+## Phase 5 — Client-specific objectives
 
-**Status: planned.**
+**Status: started.**
 
-Richer objective functions and simple local data examples. Possibly FedAvg-style aggregation experiments. Still demos, not a full training framework.
+Implemented:
+
+- client-specific objective evaluation
+- per-client local target and local loss
+- mean local loss summary
+- artifact-producing `run_client_objectives.py` example
+
+Remaining planned items:
+
+- richer local objectives later
+- local data examples later
+- FedAvg much later, if ever
+
+This phase is still not dataset training and not a full QFL training framework.
 
 ---
 

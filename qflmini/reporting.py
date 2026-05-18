@@ -175,6 +175,45 @@ def format_clean_vs_noisy_backend_report(run_result: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def format_client_objectives_report(result: dict[str, Any]) -> str:
+    """Format client-specific objective results as a readable text report.
+
+    Args:
+        result: Result dictionary returned by
+            ``evaluate_client_objectives``.
+
+    Returns:
+        A clean human-readable report for the client-specific objective demo.
+    """
+    lines = [
+        "qfl-mini: client-specific objective demo",
+        "",
+        "Client objectives:",
+    ]
+
+    for client_objective in result["client_objectives"]:
+        lines.append(
+            f"- {client_objective['client_id']} | "
+            f"theta={client_objective['theta']} | "
+            f"target={client_objective['target']} | "
+            f"result={client_objective['result']:.6f} | "
+            f"loss={client_objective['loss']:.6f}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Aggregated result:",
+            f"{result['aggregated_result']:.6f}",
+            "",
+            "Mean local loss:",
+            f"{result['mean_local_loss']:.6f}",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
 def format_gradient_update_report(update_result: dict[str, Any]) -> str:
     """Format a finite-difference gradient update result as a readable text report.
 

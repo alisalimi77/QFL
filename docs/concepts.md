@@ -80,6 +80,16 @@ loss = (aggregated_result - target)^2
 
 This is for observability only. It is not full training. The target is a fixed scalar, not a dataset.
 
+## Client-Specific Objective
+
+A client-specific objective gives each quantum client its own local target. The client runs its local circuit, then qfl-mini computes:
+
+```text
+client_loss = (client_result - client_target)^2
+```
+
+The `run_client_objectives.py` example reports each client result, each local target, each local loss, the aggregated result, and the mean local loss. This demonstrates different local objective contexts across clients. It is not dataset training, not FedAvg, and not full QFL training.
+
 ## Deterministic Noise
 
 `NoisyBackend` wraps any base backend and applies a deterministic perturbation to its output:
