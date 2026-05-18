@@ -28,6 +28,7 @@ python examples/run_clean_vs_noisy_backend.py
 ```
 
 Artifact-producing examples write timestamped JSON files under `runs/`.
+Generated artifact JSON files are ignored by git; `runs/.gitkeep` keeps the directory in the repository.
 
 ## What each example does
 
@@ -82,14 +83,14 @@ python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
 
 ## Manifest examples
 
-| Manifest                             | Name                       | Purpose                                      |
-| ------------------------------------ | -------------------------- | -------------------------------------------- |
-| `gradient_update.json`               | `default-gradient-update`  | Default finite-difference gradient update    |
-| `gradient_update_low_lr.json`        | `low-learning-rate`        | Same experiment with a smaller learning rate |
-| `gradient_update_target_half.json`   | `target-half`              | Same experiment with a non-zero target       |
-| `gradient_update_more_rounds.json`   | `more-rounds`              | Same experiment with more update rounds      |
-| `gradient_update_noisy.json`         | `noisy-gradient-update`    | Same experiment with deterministic noise     |
-| `gradient_update_constant.json`      | `constant-gradient-update` | Same experiment with `ConstantBackend`       |
+| Manifest                             | Name                       | Backend             | Purpose                                      |
+| ------------------------------------ | -------------------------- | ------------------- | -------------------------------------------- |
+| `gradient_update.json`               | `default-gradient-update`  | `pennylane` default | Default finite-difference gradient update    |
+| `gradient_update_low_lr.json`        | `low-learning-rate`        | `pennylane` default | Same experiment with a smaller learning rate |
+| `gradient_update_target_half.json`   | `target-half`              | `pennylane` default | Same experiment with a non-zero target       |
+| `gradient_update_more_rounds.json`   | `more-rounds`              | `pennylane` default | Same experiment with more update rounds      |
+| `gradient_update_noisy.json`         | `noisy-gradient-update`    | `noisy`             | Deterministic noisy backend                  |
+| `gradient_update_constant.json`      | `constant-gradient-update` | `constant`          | Deterministic constant backend               |
 
 All manifests use `"manifest_version": "0.1"` and `"experiment": "gradient_update"`. Backend-aware manifests are still JSON v0.1 and only support built-in backend configs: `pennylane`, `constant`, and `noisy`. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
 

@@ -18,8 +18,9 @@ Later versions could map a client to a different simulator backend, a cloud API,
 
 A backend is the object responsible for running a scalar-theta expectation circuit and returning a float. `QuantumClient` delegates circuit execution to its backend via `backend.run_expectation(theta)`.
 
-Four backend-related objects exist:
+Backend-related objects:
 
+- **`QuantumBackend`** — a small protocol requiring `run_expectation(theta: float) -> float`.
 - **`PennyLaneBackend`** — the only real quantum backend. Calls `run_single_qubit_expectation` from `circuits.py`. Default backend for all clients.
 - **`ConstantBackend`** — a deterministic backend that always returns a fixed value regardless of theta. Intended for tests and demos only; not a quantum simulator.
 - **`NoisyBackend`** — a deterministic noisy wrapper around another backend. Adds a controlled perturbation to the base result. See "Deterministic Noise" below.
@@ -31,6 +32,16 @@ JSON manifests can select one of qfl-mini's built-in backend configs:
 `pennylane`, `constant`, or `noisy`. This support is explicit and limited; it
 does not load arbitrary Python classes, use plugins, or add external backend
 SDKs.
+
+## Backend-Aware Manifest
+
+A backend-aware manifest is still a JSON v0.1 `gradient_update` manifest. It adds an optional `backend` object using one of the built-in backend configs:
+
+- `{"type": "pennylane"}`
+- `{"type": "constant", "value": 0.5}`
+- `{"type": "noisy", "base": {"type": "pennylane"}, "noise": 0.05, "seed": 42}`
+
+If `backend` is missing, qfl-mini normalizes the manifest to use `{"type": "pennylane"}`. Backend-aware manifests do not import Python classes, load plugins, or select external quantum SDKs.
 
 ## Classical Coordinator
 
@@ -117,6 +128,7 @@ A timestamped JSON file written by artifact-producing examples. It contains:
 - full run trace (per-round results, parameters, loss values)
 
 Manifest-run artifacts additionally include backend metadata (`name` and `class`) so the execution backend is traceable from the artifact alone.
+For backend-aware manifest runs, artifacts also include the normalized manifest backend config and backend-specific metadata such as `value` for `ConstantBackend` or `base_backend`, `noise`, and `seed` for `NoisyBackend`.
 
 Artifacts are designed to be inspectable by humans and machines without any special tooling beyond a JSON reader.
 

@@ -14,12 +14,14 @@ qfl-mini is intentionally small. The design keeps each concern in a separate mod
 | `reporting.py`    | Human-readable report formatters                                                             |
 | `metadata.py`     | Run ID generation and environment metadata collection                                        |
 | `artifacts.py`    | JSON artifact path resolution and saving                                                     |
-| `manifest.py`     | Loading and validating minimal JSON experiment manifests                                     |
-| `comparison.py`   | Loading, summarizing, and formatting saved artifact comparisons                              |
+| `manifest.py`     | Loading, validating, normalizing, and building built-in backend configs from JSON manifests  |
+| `comparison.py`   | Loading, summarizing, and formatting saved artifact comparisons with backend details         |
 
 ## Execution flow
 
 ```text
+QuantumClient -> QuantumBackend -> backend implementation
+
 QuantumClient.run()
   -> backend.run_expectation(theta)  (default: PennyLaneBackend)
   -> circuits.run_single_qubit_expectation(theta)
@@ -75,9 +77,6 @@ JSON manifest file
        normalizes manifest_version, name, description, numeric fields,
        and backend config
   -> build_backend_from_config()  explicitly builds one built-in backend
-  -> returns normalized config dict
-
-config dict
   -> creates QuantumClient objects with the selected backend
   -> creates FiniteDifferenceGradientCoordinator
   -> run_updates(num_rounds)
@@ -99,12 +98,17 @@ Saved artifact files
   -> load_artifact()          reads and validates JSON
   -> summarize_artifact()     extracts run_id, experiment, manifest_name,
                               manifest_version, manifest_path, manifest_file,
-                              backend_name, backend_class,
+                              backend_name, backend_class, backend_detail,
                               num_rounds, final_theta, final_loss
   -> format_artifact_comparison()  produces a plain text table
                               (columns: run_id, manifest, manifest_file,
-                               backend, experiment, rounds, final_theta, final_loss)
+                               backend, backend_detail, experiment, rounds,
+                               final_theta, final_loss)
 ```
+
+Backend detail extraction is display-only. It reads metadata already stored in
+artifacts, such as `base_backend`, `noise`, and `seed` for `NoisyBackend`, or
+`value` for `ConstantBackend`.
 
 ## Why the design is intentionally small
 

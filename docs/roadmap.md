@@ -19,7 +19,7 @@ For the current end-to-end workflow, see [walkthrough.md](walkthrough.md).
 
 ---
 
-## Phase 1 — Observable and reproducible parameter experiments
+## Phase 1 — Observable parameter/loss/gradient traces
 
 **Status: implemented.**
 
@@ -33,11 +33,11 @@ For the current end-to-end workflow, see [walkthrough.md](walkthrough.md).
 
 ---
 
-## Phase 2 — Experiment manifests
+## Phase 2 — Manifest/artifact/comparison workflow
 
-**Status: started.**
+**Status: implemented / active.**
 
-Started:
+Implemented:
 
 - JSON manifest v0 for finite-difference gradient update experiments
 - `load_gradient_update_manifest()` loads and validates a JSON manifest file
@@ -45,15 +45,14 @@ Started:
 - multiple example manifests showing different parameter settings (`learning_rate`, `target`, `num_rounds`)
 - manifest versioning (`manifest_version`) and human-readable names (`name`)
 - optional `description` field in manifests
-- artifact comparison shows manifest names
 - simple dependency-free artifact comparison helper (`comparison.py`, `compare_artifacts.py`)
 - manifest provenance in artifacts (`manifest_path` recorded in run dict)
-- artifact comparison shows manifest filename (`manifest_file` column)
+- artifact comparison shows manifest names, manifest filenames, backend names, backend details, final theta, and final loss
 
 Remaining planned items:
 
 - more experiment types (parameter update, multi-round)
-- richer artifact comparison later
+- possible comparison ergonomics later
 - no YAML support yet
 - no plugin system yet
 - no dashboard or plotting yet
@@ -62,11 +61,11 @@ The Python API stays primary. The manifest format is an optional convenience lay
 
 ---
 
-## Phase 3 — Backend adapters
+## Phase 3 — Backend abstraction
 
-**Status: started.**
+**Status: active.**
 
-Started:
+Implemented:
 
 - minimal `QuantumBackend` protocol (`backends.py`)
 - `PennyLaneBackend` as the only real quantum backend
@@ -75,24 +74,24 @@ Started:
 - `QuantumClient` now delegates to its backend; defaults to `PennyLaneBackend`
 - coordinators preserve the backend when creating temporary clients
 - backend metadata recorded in manifest-run artifacts
-- artifact comparison table shows backend name column
+- artifact comparison table shows backend name and backend detail columns
 - custom backend demo (`run_custom_backend.py`)
 
 Remaining planned items:
 
 - richer backend config ergonomics
-- backend metadata in all artifact types (manifest-run and clean/noisy are implemented)
+- backend metadata consistency across future artifact types
 - possible adapters much later (no commitments yet)
 
 PennyLane stays the first and default backend. The interface is intentionally small — it is not a plugin system and adds no new runtime dependencies.
 
 ---
 
-## Phase 4 — Noise and backend realism
+## Phase 4 — Deterministic backend realism and backend-aware manifests
 
-**Status: started.**
+**Status: active.**
 
-Started:
+Implemented:
 
 - `NoisyBackend` — deterministic noisy wrapper around any base backend
 - perturbation formula: `noise * sin(theta + seed)`, clipped to `[-1.0, 1.0]`
@@ -101,11 +100,13 @@ Started:
 - `format_clean_vs_noisy_backend_report()` report helper
 - backend-aware manifest experiments for built-in backends (`pennylane`, `constant`, `noisy`)
 - noisy and constant backend example manifests
+- backend detail comparison for noisy and constant artifacts
 
 Remaining planned items:
 
 - metrics aggregating clean-vs-noisy difference across rounds
-- richer backend configs later
+- richer deterministic backend realism
+- manifest UX refinement
 - external backend adapters much later
 - no hardware noise models or density-matrix simulation
 
@@ -119,11 +120,11 @@ Richer objective functions and simple local data examples. Possibly FedAvg-style
 
 ---
 
-## Phase 6 — Real hardware integration
+## Phase 6 — External adapter exploration
 
 **Status: planned, optional.**
 
-Optional execution on real quantum hardware via a cloud API. Queue and runtime awareness. Artifact comparison between simulator and hardware runs.
+Possible adapters for external quantum SDKs or services. This is not implemented and not committed to a specific provider.
 
 This remains optional and exploratory. qfl-mini does not aim to be a production hardware execution system.
 
@@ -139,3 +140,5 @@ These are not planned for any phase:
 - guaranteed convergence or optimization correctness claims
 - FedAvg as the default aggregation strategy
 - dataset-based training as a core feature
+- arbitrary backend imports or plugin systems
+- production real hardware support

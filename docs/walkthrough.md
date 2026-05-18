@@ -191,14 +191,14 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.js
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 ```
 
-| Manifest                             | Name                      | What changes                 |
-| ------------------------------------ | ------------------------- | ---------------------------- |
-| `gradient_update.json`               | `default-gradient-update` | Default settings             |
-| `gradient_update_low_lr.json`        | `low-learning-rate`       | Smaller learning rate        |
-| `gradient_update_target_half.json`   | `target-half`             | Non-zero target (0.5)        |
-| `gradient_update_more_rounds.json`   | `more-rounds`             | Five rounds instead of three |
-| `gradient_update_noisy.json`         | `noisy-gradient-update`   | Deterministic noisy backend  |
-| `gradient_update_constant.json`      | `constant-gradient-update`| Deterministic constant backend |
+| Manifest                             | Name                       | Backend             | What changes                   |
+| ------------------------------------ | -------------------------- | ------------------- | ------------------------------ |
+| `gradient_update.json`               | `default-gradient-update`  | `pennylane` default | Default settings               |
+| `gradient_update_low_lr.json`        | `low-learning-rate`        | `pennylane` default | Smaller learning rate          |
+| `gradient_update_target_half.json`   | `target-half`              | `pennylane` default | Non-zero target (0.5)          |
+| `gradient_update_more_rounds.json`   | `more-rounds`              | `pennylane` default | Five rounds instead of three   |
+| `gradient_update_noisy.json`         | `noisy-gradient-update`    | `noisy`             | Deterministic noisy backend    |
+| `gradient_update_constant.json`      | `constant-gradient-update` | `constant`          | Deterministic constant backend |
 
 Each run produces a separate artifact under `runs/`.
 
@@ -222,8 +222,9 @@ You can compare a default, noisy, and constant manifest run:
 python examples/compare_artifacts.py runs/<default>.json runs/<noisy>.json runs/<constant>.json
 ```
 
-The comparison table includes a `backend` column, so backend differences are
-visible without opening each artifact.
+Replace the angle-bracket placeholders with the real filenames printed by the
+example commands. The comparison table includes `backend` and `backend_detail`
+columns, so backend differences are visible without opening each artifact.
 
 ---
 
@@ -241,9 +242,10 @@ The comparison table shows key fields side by side:
 ```text
 qfl-mini: artifact comparison
 
-run_id                                          manifest                 manifest_file                     backend    experiment       rounds  final_theta  final_loss
-run_from_manifest_gradient_update_...           default-gradient-update  gradient_update.json              pennylane  gradient_update  3       0.773778     0.608376
-run_from_manifest_gradient_update_...           more-rounds              gradient_update_more_rounds.json  pennylane  gradient_update  5       0.972194     0.412106
+run_id                                          manifest                  manifest_file                  backend    backend_detail                       experiment       rounds  final_theta  final_loss
+run_from_manifest_gradient_update_...           default-gradient-update   gradient_update.json           pennylane  -                                    gradient_update  3       0.773778     0.608376
+run_from_manifest_gradient_update_...           noisy-gradient-update     gradient_update_noisy.json     noisy      base=pennylane, noise=0.05, seed=42  gradient_update  3       0.752743     0.546736
+run_from_manifest_gradient_update_...           constant-gradient-update  gradient_update_constant.json  constant   value=0.5                            gradient_update  3       0.500000     0.250000
 ```
 
 This is a plain text, dependency-free helper. It is not a dashboard or experiment tracking server.
@@ -262,7 +264,7 @@ Artifacts include:
 - `example` name
 - environment metadata (Python version, platform, PennyLane version)
 - manifest path and manifest config (for manifest-run artifacts)
-- backend metadata (`name` and `class`)
+- backend metadata (`name`, `class`, and backend-specific details when available)
 - full run result (per-round traces, final theta, final loss)
 
 Abbreviated shape of a manifest-run artifact:
@@ -282,14 +284,25 @@ Abbreviated shape of a manifest-run artifact:
     "manifest_path": "examples/manifests/gradient_update.json",
     "manifest": {
       "manifest_version": "0.1",
-      "name": "default-gradient-update"
+      "name": "noisy-gradient-update",
+      "backend": {
+        "type": "noisy",
+        "base": {
+          "type": "pennylane"
+        },
+        "noise": 0.05,
+        "seed": 42
+      }
     },
     "backend": {
-      "name": "pennylane",
-      "class": "PennyLaneBackend"
+      "name": "noisy",
+      "class": "NoisyBackend",
+      "base_backend": "pennylane",
+      "noise": "0.05",
+      "seed": "42"
     },
     "result": {
-      "final_theta": 0.7737779663622264
+      "final_theta": 0.75274294792475
     }
   }
 }
@@ -380,9 +393,9 @@ pytest
 ```text
 Phase 0: minimal execution                            [done]
 Phase 1: parameter/loss/gradient traces               [done]
-Phase 2: manifest/artifact/comparison workflow        [done]
-Phase 3: backend abstraction                          [done]
-Phase 4: noise and backend realism                    [active]
+Phase 2: manifest/artifact/comparison workflow        [done/active]
+Phase 3: backend abstraction                          [active]
+Phase 4: deterministic backend realism                [active]
 ```
 
 **What the project can do now:**
