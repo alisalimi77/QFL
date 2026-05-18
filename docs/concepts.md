@@ -90,6 +90,16 @@ client_loss = (client_result - client_target)^2
 
 The `run_client_objectives.py` example reports each client result, each local target, each local loss, the aggregated result, and the mean local loss. The same evaluation can be run from `examples/manifests/client_objectives.json`. This demonstrates different local objective contexts across clients. It is not dataset training, not FedAvg, and not full QFL training.
 
+## Scalar FedAvg
+
+Scalar FedAvg is qfl-mini's minimal FedAvg-style loop over one scalar parameter. The server owns a global `theta`, each client computes a local finite-difference update from its own local target, and the server averages the local updated theta values:
+
+```text
+global theta -> client local updates -> mean aggregation -> next global theta
+```
+
+The trace records every round, every client result, local loss, finite-difference gradient, local updated theta, aggregation input, and next global theta. This is not FedAvg over model weights, not dataset training, and not a full federated learning framework.
+
 ## Deterministic Noise
 
 `NoisyBackend` wraps any base backend and applies a deterministic perturbation to its output:
@@ -144,7 +154,7 @@ Artifacts are designed to be inspectable by humans and machines without any spec
 
 ## Artifact Comparison
 
-Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts summary fields, and prints a plain text table. Comparison is experiment-aware: `gradient_update` uses `final_loss` and `final_theta`, while `client_objectives` uses `mean_local_loss` and `aggregated_result`. This avoids forcing all experiments into gradient-specific columns.
+Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts summary fields, and prints a plain text table. Comparison is experiment-aware: `gradient_update` uses `final_loss` and `final_theta`, `client_objectives` uses `mean_local_loss` and `aggregated_result`, and direct `scalar_fedavg` artifacts use `final_mean_local_loss` and `final_theta`. This avoids forcing all experiments into gradient-specific columns.
 
 It is intentionally plain text and dependency-free. It is not a dashboard, not a plotting tool, and not an experiment tracking server.
 

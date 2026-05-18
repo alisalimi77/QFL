@@ -7,6 +7,7 @@
 | `run_parameter_update.py`        | Heuristic parameter update + loss tracking                            | Yes              |
 | `run_gradient_update.py`         | Finite-difference gradient update                                     | Yes              |
 | `run_client_objectives.py`       | Evaluates local client-specific objectives and mean local loss         | Yes              |
+| `run_scalar_fedavg.py`           | Runs transparent scalar FedAvg over a single parameter                 | Yes              |
 | `run_from_manifest.py`           | Runs a supported experiment from a JSON manifest                      | Yes              |
 | `compare_artifacts.py`           | Compares saved JSON artifacts from multiple runs                      | No               |
 | `run_custom_backend.py`          | Backend injection with a deterministic `ConstantBackend`              | No               |
@@ -22,6 +23,7 @@ python examples/run_multi_round.py
 python examples/run_parameter_update.py
 python examples/run_gradient_update.py
 python examples/run_client_objectives.py
+python examples/run_scalar_fedavg.py
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
@@ -44,6 +46,12 @@ Generated artifact JSON files are ignored by git; `runs/.gitkeep` keeps the dire
 **`run_gradient_update.py`** — runs a finite-difference gradient update loop. Each round estimates a gradient using central finite differences and updates `next_theta = theta - learning_rate * gradient`. Saves a JSON artifact.
 
 **`run_client_objectives.py`** — evaluates two client-specific local objectives. Each client has its own target, local loss is computed per client, and the example reports mean local loss. Saves a JSON artifact.
+
+**`run_scalar_fedavg.py`** — runs a transparent scalar FedAvg-style loop. The server owns one scalar theta, clients compute local finite-difference updates from local targets, and the server averages local updated theta values. Saves a full per-round and per-client trace artifact.
+
+```bash
+python examples/run_scalar_fedavg.py
+```
 
 **`run_from_manifest.py`** — loads a JSON manifest file, validates it, and runs the specified experiment. Currently `gradient_update` and `client_objectives` manifests are supported. Gradient manifests define clients, rounds, initial theta, learning rate, target, epsilon, and optionally one built-in backend config. Client objective manifests define client IDs, theta values, and local targets. Manifests without `backend` default to PennyLane. Saves a JSON artifact that includes the normalized manifest config, backend metadata, and the run result.
 
@@ -86,7 +94,7 @@ Then compare them:
 python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
 ```
 
-`compare_artifacts.py` is dependency-free. It prints run_id, manifest name, manifest file, backend name, backend details, experiment, and experiment-aware primary/secondary metrics. For `gradient_update`, it compares `final_loss` and `final_theta`. For `client_objectives`, it compares `mean_local_loss` and `aggregated_result`. It is not a dashboard or experiment tracking system.
+`compare_artifacts.py` is dependency-free. It prints run_id, manifest name, manifest file, backend name, backend details, experiment, and experiment-aware primary/secondary metrics. For `gradient_update`, it compares `final_loss` and `final_theta`. For `client_objectives`, it compares `mean_local_loss` and `aggregated_result`. For direct scalar FedAvg artifacts, it compares `final_mean_local_loss` and `final_theta`. It is not a dashboard or experiment tracking system.
 
 ## Manifest examples
 

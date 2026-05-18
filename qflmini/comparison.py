@@ -11,7 +11,7 @@ _MAX_MANIFEST_WIDTH = 25
 _MAX_MANIFEST_FILE_WIDTH = 40
 _MAX_BACKEND_WIDTH = 20
 _MAX_BACKEND_DETAIL_WIDTH = 40
-_MAX_METRIC_WIDTH = 20
+_MAX_METRIC_WIDTH = 24
 
 
 def load_artifact(path: str | Path) -> dict[str, Any]:
@@ -61,7 +61,7 @@ def _format_backend_detail(backend: dict[str, Any]) -> str:
 def _split_artifact_payload(artifact: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return result and manifest payloads from a qfl-mini artifact."""
     run = artifact.get("run", {})
-    if isinstance(run, dict) and "manifest" in run and "result" in run:
+    if isinstance(run, dict) and "result" in run:
         result_data = run.get("result", {})
         manifest_data = run.get("manifest", {})
     else:
@@ -74,11 +74,19 @@ def _split_artifact_payload(artifact: dict[str, Any]) -> tuple[dict[str, Any], d
     )
 
 
-def _infer_experiment(artifact: dict[str, Any], manifest_data: dict[str, Any]) -> str:
+def _infer_experiment(
+    artifact: dict[str, Any],
+    manifest_data: dict[str, Any],
+    result_data: dict[str, Any] | None = None,
+) -> str:
     """Infer experiment type from manifest metadata or example name."""
     example = artifact.get("example", "unknown")
     if manifest_data.get("experiment"):
         return manifest_data["experiment"]
+    if isinstance(result_data, dict) and result_data.get("algorithm") == "scalar_fedavg":
+        return "scalar_fedavg"
+    if str(example) == "run_scalar_fedavg":
+        return "scalar_fedavg"
     if "gradient_update" in str(example):
         return "gradient_update"
     if "client_objectives" in str(example):
@@ -104,7 +112,7 @@ def extract_experiment_metrics(artifact: dict[str, Any]) -> dict[str, Any]:
         A dictionary containing metric names and values for comparison.
     """
     result_data, manifest_data = _split_artifact_payload(artifact)
-    experiment = _infer_experiment(artifact, manifest_data)
+    experiment = _infer_experiment(artifact, manifest_data, result_data)
 
     final_loss = _last_round_loss(result_data)
     final_theta = result_data.get("final_theta")
@@ -123,6 +131,14 @@ def extract_experiment_metrics(artifact: dict[str, Any]) -> dict[str, Any]:
             "primary_value": result_data.get("mean_local_loss"),
             "secondary_metric": "aggregated_result",
             "secondary_value": result_data.get("aggregated_result"),
+        }
+
+    if experiment == "scalar_fedavg":
+        return {
+            "primary_metric": "final_mean_local_loss",
+            "primary_value": result_data.get("final_mean_local_loss"),
+            "secondary_metric": "final_theta",
+            "secondary_value": result_data.get("final_theta"),
         }
 
     return {
@@ -153,7 +169,7 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     example = artifact.get("example", "unknown")
     run = artifact.get("run", {})
     result_data, manifest_data = _split_artifact_payload(artifact)
-    experiment = _infer_experiment(artifact, manifest_data)
+    experiment = _infer_experiment(artifact, manifest_data, result_data)
 
     # manifest metadata
     manifest_name = manifest_data.get("name", "unknown")

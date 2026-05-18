@@ -12,6 +12,7 @@ qfl-mini is intentionally small. The design keeps each concern in a separate mod
 | `coordinator.py`  | Basic multi-round coordination and mean aggregation                                          |
 | `optimization.py` | Parameter and gradient update coordinators                                                   |
 | `objectives.py`   | Client-specific objective evaluation helpers                                                 |
+| `federated.py`    | Transparent scalar FedAvg coordinator and trace helpers                                      |
 | `reporting.py`    | Human-readable report formatters                                                             |
 | `metadata.py`     | Run ID generation and environment metadata collection                                        |
 | `artifacts.py`    | JSON artifact path resolution and saving                                                     |
@@ -34,6 +35,13 @@ Coordinator / ParameterUpdateCoordinator / FiniteDifferenceGradientCoordinator
   -> computes mean aggregation
   -> computes loss / gradient / next_theta
   -> returns structured round trace
+
+ScalarFedAvgCoordinator
+  -> sends one global scalar theta to each configured client context
+  -> evaluates local losses and finite-difference gradients
+  -> computes local_next_theta per client
+  -> mean-aggregates local updated theta values
+  -> returns a per-round and per-client trace
 ```
 
 The backend interface (`QuantumBackend`) is a small seam between `QuantumClient` and the circuit implementation. It is not a plugin system and adds no new runtime dependencies. `PennyLaneBackend` is the only real quantum backend. `ConstantBackend` and `NoisyBackend` are deterministic support backends for tests and controlled examples.
@@ -74,6 +82,12 @@ local objective results under the run payload:
 
 ```text
 QuantumClient -> local target -> local loss -> mean local loss artifact
+```
+
+Scalar FedAvg artifacts store the backend metadata plus a trace-first result:
+
+```text
+global theta -> client local updates -> mean aggregation -> next global theta -> artifact trace
 ```
 
 ## Manifest flow
@@ -128,7 +142,8 @@ artifacts, such as `base_backend`, `noise`, and `seed` for `NoisyBackend`, or
 
 Comparison also extracts experiment-aware primary and secondary metrics from
 artifact JSON. For example, `gradient_update` compares final loss and final
-theta, while `client_objectives` compares mean local loss and aggregated result.
+theta, `client_objectives` compares mean local loss and aggregated result, and
+direct `scalar_fedavg` artifacts compare final mean local loss and final theta.
 
 ## Why the design is intentionally small
 

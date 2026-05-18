@@ -248,3 +248,56 @@ def format_gradient_update_report(update_result: dict[str, Any]) -> str:
     )
 
     return "\n".join(lines)
+
+
+def format_scalar_fedavg_report(result: dict[str, Any]) -> str:
+    """Format a scalar FedAvg result as a readable text report.
+
+    Args:
+        result: Result dictionary returned by
+            ``ScalarFedAvgCoordinator.run_rounds``.
+
+    Returns:
+        A compact human-readable report for the transparent scalar FedAvg demo.
+    """
+    lines = [
+        "qfl-mini: transparent scalar FedAvg demo",
+        "",
+        "Rounds:",
+    ]
+
+    for round_result in result["rounds"]:
+        lines.append(
+            f"- round {round_result['round']} | "
+            f"global_theta={round_result['global_theta']:.6f} | "
+            f"mean_local_loss={round_result['mean_local_loss']:.6f} | "
+            f"next_global_theta="
+            f"{round_result['aggregation']['next_global_theta']:.6f}"
+        )
+
+    final_round = result["rounds"][-1]
+    lines.extend(
+        [
+            "",
+            "Client updates, final round:",
+        ]
+    )
+    for update in final_round["client_updates"]:
+        lines.append(
+            f"- {update['client_id']} | "
+            f"target={update['target']} | "
+            f"result={update['result']:.6f} | "
+            f"loss={update['loss']:.6f} | "
+            f"gradient={update['gradient']:.6f} | "
+            f"local_next_theta={update['local_next_theta']:.6f}"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Final theta:",
+            f"{result['final_theta']:.6f}",
+        ]
+    )
+
+    return "\n".join(lines)

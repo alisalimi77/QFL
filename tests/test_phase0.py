@@ -37,6 +37,7 @@ from qflmini.manifest import (
     validate_manifest,
 )
 from qflmini.backends import ConstantBackend, NoisyBackend, PennyLaneBackend, get_backend_metadata
+from qflmini.federated import ScalarFedAvgClient, ScalarFedAvgCoordinator
 from qflmini.objectives import (
     ClientObjective,
     evaluate_client_objective,
@@ -47,6 +48,7 @@ from qflmini.reporting import (
     format_clean_vs_noisy_backend_report,
     format_client_objectives_report,
     format_custom_backend_report,
+    format_scalar_fedavg_report,
 )
 
 
@@ -1029,6 +1031,69 @@ _CLIENT_OBJECTIVES_MANIFEST_ARTIFACT = {
 }
 
 
+_SCALAR_FEDAVG_ARTIFACT = {
+    "run_id": "run_scalar_fedavg_20260101T000003Z",
+    "example": "run_scalar_fedavg",
+    "run": {
+        "backend": {
+            "name": "pennylane",
+            "class": "PennyLaneBackend",
+        },
+        "result": {
+            "algorithm": "scalar_fedavg",
+            "num_clients": 2,
+            "num_rounds": 2,
+            "initial_theta": 0.5,
+            "learning_rate": 0.1,
+            "epsilon": 0.001,
+            "aggregation": {"method": "mean"},
+            "clients": [
+                {"client_id": "client_1", "target": 0.0},
+                {"client_id": "client_2", "target": 0.5},
+            ],
+            "rounds": [
+                {
+                    "round": 1,
+                    "global_theta": 0.5,
+                    "client_updates": [
+                        {
+                            "client_id": "client_1",
+                            "target": 0.0,
+                            "theta": 0.5,
+                            "result": 0.877583,
+                            "loss": 0.770151,
+                            "loss_plus": 0.76931,
+                            "loss_minus": 0.770992,
+                            "gradient": -0.841,
+                            "local_next_theta": 0.5841,
+                        }
+                    ],
+                    "aggregation": {
+                        "method": "mean",
+                        "local_next_thetas": [0.5841, 0.5337],
+                        "next_global_theta": 0.5589,
+                    },
+                    "mean_local_loss": 0.456359,
+                },
+                {
+                    "round": 2,
+                    "global_theta": 0.5589,
+                    "client_updates": [],
+                    "aggregation": {
+                        "method": "mean",
+                        "local_next_thetas": [0.62, 0.58],
+                        "next_global_theta": 0.6,
+                    },
+                    "mean_local_loss": 0.3,
+                },
+            ],
+            "final_theta": 0.6,
+            "final_mean_local_loss": 0.3,
+        },
+    },
+}
+
+
 def _manifest_artifact_with_backend(backend: dict) -> dict:
     artifact = json.loads(json.dumps(_MANIFEST_ARTIFACT))
     artifact["run"]["backend"] = backend
@@ -1156,6 +1221,15 @@ def test_extract_experiment_metrics_client_objectives() -> None:
     assert metrics["primary_value"] == pytest.approx(0.499612)
     assert metrics["secondary_metric"] == "aggregated_result"
     assert metrics["secondary_value"] == pytest.approx(0.838387)
+
+
+def test_extract_experiment_metrics_scalar_fedavg() -> None:
+    metrics = extract_experiment_metrics(_SCALAR_FEDAVG_ARTIFACT)
+
+    assert metrics["primary_metric"] == "final_mean_local_loss"
+    assert metrics["primary_value"] == pytest.approx(0.3)
+    assert metrics["secondary_metric"] == "final_theta"
+    assert metrics["secondary_value"] == pytest.approx(0.6)
 
 
 def test_extract_experiment_metrics_unknown_without_metrics() -> None:
@@ -1289,15 +1363,18 @@ def test_format_artifact_comparison_handles_mixed_experiments() -> None:
     summaries = [
         summarize_artifact(_MANIFEST_ARTIFACT),
         summarize_artifact(_CLIENT_OBJECTIVES_MANIFEST_ARTIFACT),
+        summarize_artifact(_SCALAR_FEDAVG_ARTIFACT),
     ]
 
     output = format_artifact_comparison(summaries)
 
     assert "gradient_update" in output
     assert "client_objectives" in output
+    assert "scalar_fedavg" in output
     assert "client-objectives-demo" in output
     assert "mean_local_loss" in output
     assert "aggregated_result" in output
+    assert "final_mean_local_loss" in output
     assert "0.499612" in output
 
 
@@ -1415,6 +1492,199 @@ def test_client_objectives_artifact_shape(tmp_path) -> None:
     assert "client_objectives" in saved_data["run"]
     assert "mean_local_loss" in saved_data["run"]
     assert "aggregated_result" in saved_data["run"]
+
+
+# --- scalar FedAvg tests ---
+
+
+def test_scalar_fedavg_requires_clients() -> None:
+    with pytest.raises(ValueError, match="at least one client"):
+        ScalarFedAvgCoordinator(
+            clients=[],
+            backend=ConstantBackend(0.5),
+            initial_theta=0.5,
+            learning_rate=0.1,
+        )
+
+
+def test_scalar_fedavg_requires_non_empty_client_id() -> None:
+    with pytest.raises(ValueError, match="client_id"):
+        ScalarFedAvgCoordinator(
+            clients=[ScalarFedAvgClient(client_id=" ", target=0.0)],
+            backend=ConstantBackend(0.5),
+            initial_theta=0.5,
+            learning_rate=0.1,
+        )
+
+
+def test_scalar_fedavg_requires_numeric_target() -> None:
+    with pytest.raises(ValueError, match="target"):
+        ScalarFedAvgCoordinator(
+            clients=[ScalarFedAvgClient(client_id="client_1", target="0.0")],
+            backend=ConstantBackend(0.5),
+            initial_theta=0.5,
+            learning_rate=0.1,
+        )
+
+
+def test_scalar_fedavg_requires_positive_learning_rate() -> None:
+    with pytest.raises(ValueError, match="learning_rate"):
+        ScalarFedAvgCoordinator(
+            clients=[ScalarFedAvgClient(client_id="client_1", target=0.0)],
+            backend=ConstantBackend(0.5),
+            initial_theta=0.5,
+            learning_rate=0.0,
+        )
+
+
+def test_scalar_fedavg_requires_positive_epsilon() -> None:
+    with pytest.raises(ValueError, match="epsilon"):
+        ScalarFedAvgCoordinator(
+            clients=[ScalarFedAvgClient(client_id="client_1", target=0.0)],
+            backend=ConstantBackend(0.5),
+            initial_theta=0.5,
+            learning_rate=0.1,
+            epsilon=0.0,
+        )
+
+
+def test_scalar_fedavg_run_rounds_requires_positive_count() -> None:
+    coordinator = ScalarFedAvgCoordinator(
+        clients=[ScalarFedAvgClient(client_id="client_1", target=0.0)],
+        backend=ConstantBackend(0.5),
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+
+    with pytest.raises(ValueError, match="at least 1"):
+        coordinator.run_rounds(0)
+
+
+def test_scalar_fedavg_constant_backend_has_zero_gradient() -> None:
+    coordinator = ScalarFedAvgCoordinator(
+        clients=[ScalarFedAvgClient(client_id="client_1", target=0.0)],
+        backend=ConstantBackend(0.5),
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+
+    result = coordinator.run_rounds(1)
+    update = result["rounds"][0]["client_updates"][0]
+
+    assert update["result"] == pytest.approx(0.5)
+    assert update["loss"] == pytest.approx(0.25)
+    assert update["loss_plus"] == pytest.approx(update["loss_minus"])
+    assert update["gradient"] == pytest.approx(0.0)
+    assert update["local_next_theta"] == pytest.approx(0.5)
+
+
+def test_scalar_fedavg_aggregates_local_updates() -> None:
+    coordinator = ScalarFedAvgCoordinator(
+        clients=[
+            ScalarFedAvgClient(client_id="client_1", target=0.0),
+            ScalarFedAvgClient(client_id="client_2", target=0.5),
+        ],
+        backend=ConstantBackend(0.5),
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+
+    result = coordinator.run_rounds(1)
+    round_result = result["rounds"][0]
+
+    assert round_result["aggregation"]["method"] == "mean"
+    assert round_result["aggregation"]["next_global_theta"] == pytest.approx(0.5)
+    assert result["final_theta"] == pytest.approx(0.5)
+
+
+def test_scalar_fedavg_trace_structure() -> None:
+    coordinator = ScalarFedAvgCoordinator(
+        clients=[
+            ScalarFedAvgClient(client_id="client_1", target=0.0),
+            ScalarFedAvgClient(client_id="client_2", target=0.5),
+        ],
+        backend=ConstantBackend(0.5),
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+
+    result = coordinator.run_rounds(2)
+
+    assert result["algorithm"] == "scalar_fedavg"
+    assert len(result["rounds"]) == 2
+    for round_result in result["rounds"]:
+        assert "global_theta" in round_result
+        assert "client_updates" in round_result
+        assert "aggregation" in round_result
+        assert "mean_local_loss" in round_result
+        for update in round_result["client_updates"]:
+            for key in (
+                "client_id",
+                "target",
+                "theta",
+                "result",
+                "loss",
+                "loss_plus",
+                "loss_minus",
+                "gradient",
+                "local_next_theta",
+            ):
+                assert key in update
+
+
+def test_format_scalar_fedavg_report_contains_expected_content() -> None:
+    coordinator = ScalarFedAvgCoordinator(
+        clients=[
+            ScalarFedAvgClient(client_id="client_1", target=0.0),
+            ScalarFedAvgClient(client_id="client_2", target=0.5),
+        ],
+        backend=ConstantBackend(0.5),
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+
+    output = format_scalar_fedavg_report(coordinator.run_rounds(2))
+
+    assert "transparent scalar FedAvg demo" in output
+    assert "Rounds:" in output
+    assert "Client updates, final round:" in output
+    assert "Final theta:" in output
+
+
+def test_scalar_fedavg_artifact_shape(tmp_path) -> None:
+    backend = ConstantBackend(0.5)
+    coordinator = ScalarFedAvgCoordinator(
+        clients=[ScalarFedAvgClient(client_id="client_1", target=0.0)],
+        backend=backend,
+        initial_theta=0.5,
+        learning_rate=0.1,
+    )
+    result = coordinator.run_rounds(1)
+    artifact = build_run_artifact(
+        "run_scalar_fedavg",
+        {"backend": get_backend_metadata(backend), "result": result},
+    )
+    path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
+
+    saved_path = save_json_artifact(artifact, path)
+    saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
+
+    assert "backend" in saved_data["run"]
+    assert saved_data["run"]["result"]["algorithm"] == "scalar_fedavg"
+    assert "rounds" in saved_data["run"]["result"]
+    assert "final_theta" in saved_data["run"]["result"]
+    assert "final_mean_local_loss" in saved_data["run"]["result"]
+
+
+def test_scalar_fedavg_comparison_support() -> None:
+    summary = summarize_artifact(_SCALAR_FEDAVG_ARTIFACT)
+    output = format_artifact_comparison([summary])
+
+    assert summary["experiment"] == "scalar_fedavg"
+    assert summary["primary_metric"] == "final_mean_local_loss"
+    assert summary["secondary_metric"] == "final_theta"
+    assert "scalar_fedavg" in output
+    assert "final_mean_local_loss" in output
 
 
 # --- backend tests ---

@@ -433,7 +433,46 @@ plain text comparison table, `primary_metric` is `mean_local_loss` and
 
 ---
 
-## 15. Run checks
+## 15. Run transparent scalar FedAvg
+
+```bash
+python examples/run_scalar_fedavg.py
+```
+
+This demo is a minimal FedAvg-style loop over one scalar global parameter. The
+server sends `global_theta` to each client context, each client computes a
+local finite-difference gradient against its own target, and the server averages
+the local updated theta values.
+
+This is trace-first: the artifact records every round, every client update,
+local losses, finite-difference losses, gradients, local updated theta values,
+the aggregation inputs, and the next global theta. It is not dataset-based
+training, not model-weight FedAvg, and not a full federated learning framework.
+
+```text
+qfl-mini: transparent scalar FedAvg demo
+
+Rounds:
+- round 1 | global_theta=0.500000 | mean_local_loss=0.456360 | next_global_theta=0.560176
+- round 2 | global_theta=0.560176 | mean_local_loss=0.419102 | next_global_theta=0.623634
+- round 3 | global_theta=0.623634 | mean_local_loss=0.378076 | next_global_theta=0.689247
+
+Client updates, final round:
+- client_1 | target=0.0 | result=0.811761 | loss=0.658957 | gradient=-0.948119 | local_next_theta=0.718446
+- client_2 | target=0.5 | result=0.811761 | loss=0.097195 | gradient=-0.364130 | local_next_theta=0.660047
+
+Final theta:
+0.689247
+Saved artifact: runs/run_scalar_fedavg_<timestamp>.json
+```
+
+Direct scalar FedAvg artifacts can be compared with other artifacts. In the
+comparison table, `primary_metric` is `final_mean_local_loss` and
+`secondary_metric` is `final_theta`.
+
+---
+
+## 16. Run checks
 
 ```bash
 python -m compileall qflmini examples
@@ -445,7 +484,7 @@ pytest
 
 ---
 
-## 16. Where this leaves the project
+## 17. Where this leaves the project
 
 ```text
 Phase 0: minimal execution                            [done]
@@ -454,6 +493,7 @@ Phase 2: manifest/artifact/comparison workflow        [done/active]
 Phase 3: backend abstraction                          [active]
 Phase 4: deterministic backend realism                [active]
 Phase 5: client-specific objectives + manifest support [active]
+Phase 6: transparent scalar FedAvg                    [started]
 ```
 
 **What the project can do now:**
@@ -468,10 +508,12 @@ Phase 5: client-specific objectives + manifest support [active]
 - run backend-aware client-objective manifests
 - save timestamped reproducibility artifacts
 - compare artifacts in a plain text table
+- compare direct scalar FedAvg artifacts with experiment-aware metrics
 - inject a custom backend in Python
 - record backend metadata in artifacts
 - run a deterministic noisy backend and compare clean vs. noisy results
 - evaluate client-specific local objectives
+- run transparent scalar FedAvg with full per-round and per-client trace
 
 **What is intentionally not supported:**
 
@@ -479,7 +521,9 @@ Phase 5: client-specific objectives + manifest support [active]
 - real quantum hardware execution
 - arbitrary backend imports or plugin systems
 - hardware noise models or density-matrix simulation
-- FedAvg
+- FedAvg over model weights
+- vector parameters, local epochs, and client sampling
+- PyTorch, Flower, or FedML integration
 - dataset-based training
 - full QFL training
 - dashboard or experiment tracking server

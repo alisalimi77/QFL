@@ -130,13 +130,40 @@ Remaining planned items:
 - richer local objectives later
 - local data examples later
 - more manifest ergonomics later
-- FedAvg much later, if ever
+- scalar FedAvg as a separate trace-first seed
 
 This phase is still not dataset training and not a full QFL training framework.
 
 ---
 
-## Phase 6 — External adapter exploration
+## Phase 6 — Transparent scalar FedAvg
+
+**Status: started.**
+
+Implemented:
+
+- scalar FedAvg coordinator (`ScalarFedAvgCoordinator`)
+- one scalar global parameter
+- per-client local finite-difference updates
+- mean aggregation over local updated theta values
+- full per-round and per-client trace
+- artifact-producing `run_scalar_fedavg.py` example
+- scalar FedAvg support in artifact comparison metrics
+
+Remaining planned items:
+
+- manifest-driven scalar FedAvg later
+- vector parameters later
+- richer deterministic scenarios later
+- toy local data examples later
+- full FedAvg over model weights much later, if ever
+
+This phase is still not dataset training, not PyTorch/Flower integration, and
+not a general federated learning framework.
+
+---
+
+## Later — External adapter exploration
 
 **Status: planned, optional.**
 

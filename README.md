@@ -29,8 +29,9 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 - not a production system
 - not a replacement for PennyLane, Qiskit, Flower, Braket, or Cirq
 - not connected to real quantum hardware yet
-- not FedAvg
+- not full FedAvg over model weights
 - not dataset-based training
+- not PyTorch, Flower, FedML, or a general FL framework
 - not a dashboard or server
 - not a full optimizer framework
 - not automatic-differentiation-based training
@@ -59,6 +60,8 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 **Objective / Loss Tracking** — each parameter update round computes a simple squared loss so progress is observable.
 
 **Client-Specific Objective** — a local objective context where each client compares its own circuit result against its own target. This is a small step toward federated objective evaluation, not dataset-based learning.
+
+**Transparent Scalar FedAvg** — a minimal FedAvg-style loop over one scalar parameter. Clients compute local finite-difference updates from local objectives, and the server averages the local updated parameters. It is trace-first and not full model-weight FedAvg.
 
 **Experiment Manifest** — a JSON v0.1 file that declares a supported experiment, currently `gradient_update` or `client_objectives`, including optional built-in backend config.
 
@@ -94,6 +97,7 @@ See [docs/architecture.md](docs/architecture.md) for the module layout and execu
 | `run_parameter_update.py`       | Heuristic parameter update + loss tracking                           | Yes              |
 | `run_gradient_update.py`        | Finite-difference gradient update                                    | Yes              |
 | `run_client_objectives.py`      | Client-specific local objectives and mean local loss                 | Yes              |
+| `run_scalar_fedavg.py`          | Transparent scalar FedAvg over a single parameter                    | Yes              |
 | `run_from_manifest.py`          | Run a supported experiment from JSON manifest                        | Yes              |
 | `compare_artifacts.py`          | Compare saved artifacts                                              | No               |
 | `run_custom_backend.py`         | Demonstrate backend injection with `ConstantBackend`                 | No               |
@@ -113,6 +117,7 @@ python examples/run_multi_round.py
 python examples/run_parameter_update.py
 python examples/run_gradient_update.py
 python examples/run_client_objectives.py
+python examples/run_scalar_fedavg.py
 ```
 
 Artifact-producing examples write timestamped JSON files under `runs/`.
@@ -223,6 +228,7 @@ run_from_manifest_client_objectives_...         client-objectives-demo   client_
 ```
 
 Comparison is experiment-aware. For `gradient_update`, the primary metric is `final_loss` and the secondary metric is `final_theta`. For `client_objectives`, the primary metric is `mean_local_loss` and the secondary metric is `aggregated_result`. Backend details are still shown when available. This is a lightweight comparison helper — no dashboard, no database, no plotting.
+For direct scalar FedAvg artifacts, the primary metric is `final_mean_local_loss` and the secondary metric is `final_theta`.
 
 ## Example output
 
@@ -291,7 +297,7 @@ python -m compileall qflmini examples
 
 ## Current status
 
-Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is done/active; Phase 3 and Phase 4 are active; Phase 5 is started.
+Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is done/active; Phase 3 and Phase 4 are active; Phase 5 is active; Phase 6 is started.
 
 **Implemented:**
 
@@ -308,6 +314,7 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is don
 - objective/loss tracking
 - finite-difference gradient update demo
 - client-specific objective evaluation and mean local loss
+- transparent scalar FedAvg with per-round and per-client trace
 - JSON manifest v0.1 for gradient update and client objective experiments
 - manifest-driven client-specific objective evaluation
 - manifest versioning (`manifest_version`) and names (`name`)
@@ -338,7 +345,9 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is don
 - hardware noise models or density-matrix simulation
 - stochastic noise
 - datasets
-- FedAvg
+- FedAvg over model weights
+- vector parameters, local epochs, and client sampling
+- PyTorch, Flower, or FedML integration
 - full QFL training
 - dashboard or experiment tracking server
 
@@ -351,6 +360,7 @@ Phase 2: manifest/artifact/comparison workflow                    [done/active]
 Phase 3: backend abstraction                                      [active]
 Phase 4: deterministic backend realism and backend-aware manifests [active]
 Phase 5: client-specific objectives                               [started]
+Phase 6: transparent scalar FedAvg                                [started]
 ```
 
 See [docs/roadmap.md](docs/roadmap.md) for the staged roadmap.
