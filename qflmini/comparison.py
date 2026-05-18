@@ -11,6 +11,7 @@ _MAX_MANIFEST_WIDTH = 25
 _MAX_MANIFEST_FILE_WIDTH = 40
 _MAX_BACKEND_WIDTH = 20
 _MAX_BACKEND_DETAIL_WIDTH = 40
+_MAX_METRIC_WIDTH = 20
 
 
 def load_artifact(path: str | Path) -> dict[str, Any]:
@@ -57,6 +58,81 @@ def _format_backend_detail(backend: dict[str, Any]) -> str:
     return "-"
 
 
+def _split_artifact_payload(artifact: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return result and manifest payloads from a qfl-mini artifact."""
+    run = artifact.get("run", {})
+    if isinstance(run, dict) and "manifest" in run and "result" in run:
+        result_data = run.get("result", {})
+        manifest_data = run.get("manifest", {})
+    else:
+        result_data = run
+        manifest_data = {}
+
+    return (
+        result_data if isinstance(result_data, dict) else {},
+        manifest_data if isinstance(manifest_data, dict) else {},
+    )
+
+
+def _infer_experiment(artifact: dict[str, Any], manifest_data: dict[str, Any]) -> str:
+    """Infer experiment type from manifest metadata or example name."""
+    example = artifact.get("example", "unknown")
+    if manifest_data.get("experiment"):
+        return manifest_data["experiment"]
+    if "gradient_update" in str(example):
+        return "gradient_update"
+    if "client_objectives" in str(example):
+        return "client_objectives"
+    return "unknown"
+
+
+def _last_round_loss(result_data: dict[str, Any]) -> Any:
+    """Return the last round loss from a result payload when available."""
+    rounds = result_data.get("rounds", [])
+    if rounds and isinstance(rounds[-1], dict) and "loss" in rounds[-1]:
+        return rounds[-1]["loss"]
+    return result_data.get("final_loss")
+
+
+def extract_experiment_metrics(artifact: dict[str, Any]) -> dict[str, Any]:
+    """Extract experiment-aware primary and secondary comparison metrics.
+
+    Args:
+        artifact: Artifact dictionary loaded from JSON.
+
+    Returns:
+        A dictionary containing metric names and values for comparison.
+    """
+    result_data, manifest_data = _split_artifact_payload(artifact)
+    experiment = _infer_experiment(artifact, manifest_data)
+
+    final_loss = _last_round_loss(result_data)
+    final_theta = result_data.get("final_theta")
+
+    if experiment == "gradient_update":
+        return {
+            "primary_metric": "final_loss",
+            "primary_value": final_loss,
+            "secondary_metric": "final_theta",
+            "secondary_value": final_theta,
+        }
+
+    if experiment == "client_objectives":
+        return {
+            "primary_metric": "mean_local_loss",
+            "primary_value": result_data.get("mean_local_loss"),
+            "secondary_metric": "aggregated_result",
+            "secondary_value": result_data.get("aggregated_result"),
+        }
+
+    return {
+        "primary_metric": "final_loss" if final_loss is not None else "n/a",
+        "primary_value": final_loss,
+        "secondary_metric": "final_theta" if final_theta is not None else "n/a",
+        "secondary_value": final_theta,
+    }
+
+
 def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     """Extract a normalized summary from a saved qfl-mini artifact.
 
@@ -69,30 +145,15 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     Returns:
         A summary dictionary with keys: run_id, example, experiment, manifest_name,
         manifest_version, manifest_path, manifest_file, backend_name, backend_class,
-        backend_detail, num_rounds, final_theta, final_loss, mean_local_loss.
+        backend_detail, num_rounds, final_theta, final_loss, mean_local_loss,
+        primary_metric, primary_value, secondary_metric, and secondary_value.
         Missing fields are represented as None, "unknown", or "-".
     """
     run_id = artifact.get("run_id", "unknown")
     example = artifact.get("example", "unknown")
     run = artifact.get("run", {})
-
-    # Distinguish manifest-wrapped (Shape B) from direct (Shape A)
-    if "manifest" in run and "result" in run:
-        result_data = run.get("result", {})
-        manifest_data = run.get("manifest", {})
-    else:
-        result_data = run
-        manifest_data = {}
-
-    # experiment
-    if manifest_data.get("experiment"):
-        experiment = manifest_data["experiment"]
-    elif "gradient_update" in str(example):
-        experiment = "gradient_update"
-    elif "client_objectives" in str(example):
-        experiment = "client_objectives"
-    else:
-        experiment = "unknown"
+    result_data, manifest_data = _split_artifact_payload(artifact)
+    experiment = _infer_experiment(artifact, manifest_data)
 
     # manifest metadata
     manifest_name = manifest_data.get("name", "unknown")
@@ -119,14 +180,11 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
 
     mean_local_loss = result_data.get("mean_local_loss")
 
-    # final_loss — last round's loss
-    rounds = result_data.get("rounds", [])
-    if rounds and isinstance(rounds[-1], dict) and "loss" in rounds[-1]:
-        final_loss = rounds[-1]["loss"]
-    elif mean_local_loss is not None:
+    final_loss = _last_round_loss(result_data)
+    if final_loss is None and mean_local_loss is not None:
         final_loss = mean_local_loss
-    else:
-        final_loss = None
+
+    metrics = extract_experiment_metrics(artifact)
 
     return {
         "run_id": run_id,
@@ -143,6 +201,7 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
         "final_theta": final_theta,
         "final_loss": final_loss,
         "mean_local_loss": mean_local_loss,
+        **metrics,
     }
 
 
@@ -184,11 +243,6 @@ def format_artifact_comparison(summaries: list[dict[str, Any]]) -> str:
             return "n/a"
         return f"{value:.6f}"
 
-    def _fmt_int(value: Any) -> str:
-        if value is None:
-            return "n/a"
-        return str(int(value))
-
     headers = [
         "run_id",
         "manifest",
@@ -196,9 +250,10 @@ def format_artifact_comparison(summaries: list[dict[str, Any]]) -> str:
         "backend",
         "backend_detail",
         "experiment",
-        "rounds",
-        "final_theta",
-        "final_loss",
+        "primary_metric",
+        "primary_value",
+        "secondary_metric",
+        "secondary_value",
     ]
 
     rows = [
@@ -209,9 +264,10 @@ def format_artifact_comparison(summaries: list[dict[str, Any]]) -> str:
             _trunc(s["backend_name"], _MAX_BACKEND_WIDTH),
             _trunc(s["backend_detail"], _MAX_BACKEND_DETAIL_WIDTH),
             str(s["experiment"]),
-            _fmt_int(s["num_rounds"]),
-            _fmt_float(s["final_theta"]),
-            _fmt_float(s["final_loss"]),
+            _trunc(s.get("primary_metric", "n/a"), _MAX_METRIC_WIDTH),
+            _fmt_float(s.get("primary_value")),
+            _trunc(s.get("secondary_metric", "n/a"), _MAX_METRIC_WIDTH),
+            _fmt_float(s.get("secondary_value")),
         ]
         for s in summaries
     ]

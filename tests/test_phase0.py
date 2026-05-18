@@ -19,6 +19,7 @@ from qflmini.metadata import (
     generate_run_id,
 )
 from qflmini.comparison import (
+    extract_experiment_metrics,
     format_artifact_comparison,
     load_artifact,
     summarize_artifact,
@@ -1066,6 +1067,10 @@ def test_summarize_artifact_direct_shape() -> None:
     assert summary["num_rounds"] == 3
     assert summary["final_theta"] == pytest.approx(0.773778)
     assert summary["final_loss"] == pytest.approx(0.608376)
+    assert summary["primary_metric"] == "final_loss"
+    assert summary["primary_value"] == pytest.approx(0.608376)
+    assert summary["secondary_metric"] == "final_theta"
+    assert summary["secondary_value"] == pytest.approx(0.773778)
 
 
 def test_summarize_artifact_manifest_shape() -> None:
@@ -1082,6 +1087,10 @@ def test_summarize_artifact_manifest_shape() -> None:
     assert summary["num_rounds"] == 5
     assert summary["final_theta"] == pytest.approx(0.972194)
     assert summary["final_loss"] == pytest.approx(0.412106)
+    assert summary["primary_metric"] == "final_loss"
+    assert summary["primary_value"] == pytest.approx(0.412106)
+    assert summary["secondary_metric"] == "final_theta"
+    assert summary["secondary_value"] == pytest.approx(0.972194)
 
 
 def test_summarize_artifact_client_objectives_shape() -> None:
@@ -1094,6 +1103,10 @@ def test_summarize_artifact_client_objectives_shape() -> None:
     assert summary["final_theta"] is None
     assert summary["mean_local_loss"] == pytest.approx(0.499612)
     assert summary["final_loss"] == pytest.approx(0.499612)
+    assert summary["primary_metric"] == "mean_local_loss"
+    assert summary["primary_value"] == pytest.approx(0.499612)
+    assert summary["secondary_metric"] == "aggregated_result"
+    assert summary["secondary_value"] == pytest.approx(0.838387)
 
 
 def test_summarize_artifact_handles_missing_fields() -> None:
@@ -1112,6 +1125,62 @@ def test_summarize_artifact_handles_missing_fields() -> None:
     assert summary["num_rounds"] is None
     assert summary["final_theta"] is None
     assert summary["final_loss"] is None
+    assert summary["primary_metric"] == "n/a"
+    assert summary["primary_value"] is None
+    assert summary["secondary_metric"] == "n/a"
+    assert summary["secondary_value"] is None
+
+
+def test_extract_experiment_metrics_gradient_update_manifest() -> None:
+    metrics = extract_experiment_metrics(_MANIFEST_ARTIFACT)
+
+    assert metrics["primary_metric"] == "final_loss"
+    assert metrics["primary_value"] == pytest.approx(0.412106)
+    assert metrics["secondary_metric"] == "final_theta"
+    assert metrics["secondary_value"] == pytest.approx(0.972194)
+
+
+def test_extract_experiment_metrics_gradient_update_direct() -> None:
+    metrics = extract_experiment_metrics(_DIRECT_ARTIFACT)
+
+    assert metrics["primary_metric"] == "final_loss"
+    assert metrics["primary_value"] == pytest.approx(0.608376)
+    assert metrics["secondary_metric"] == "final_theta"
+    assert metrics["secondary_value"] == pytest.approx(0.773778)
+
+
+def test_extract_experiment_metrics_client_objectives() -> None:
+    metrics = extract_experiment_metrics(_CLIENT_OBJECTIVES_MANIFEST_ARTIFACT)
+
+    assert metrics["primary_metric"] == "mean_local_loss"
+    assert metrics["primary_value"] == pytest.approx(0.499612)
+    assert metrics["secondary_metric"] == "aggregated_result"
+    assert metrics["secondary_value"] == pytest.approx(0.838387)
+
+
+def test_extract_experiment_metrics_unknown_without_metrics() -> None:
+    metrics = extract_experiment_metrics({"run": {"example": "unknown"}})
+
+    assert metrics["primary_metric"] == "n/a"
+    assert metrics["primary_value"] is None
+    assert metrics["secondary_metric"] == "n/a"
+    assert metrics["secondary_value"] is None
+
+
+def test_extract_experiment_metrics_unknown_with_fallback_metrics() -> None:
+    artifact = {
+        "run": {
+            "final_theta": 0.3,
+            "rounds": [{"loss": 0.4}],
+        }
+    }
+
+    metrics = extract_experiment_metrics(artifact)
+
+    assert metrics["primary_metric"] == "final_loss"
+    assert metrics["primary_value"] == pytest.approx(0.4)
+    assert metrics["secondary_metric"] == "final_theta"
+    assert metrics["secondary_value"] == pytest.approx(0.3)
 
 
 def test_summarize_artifact_noisy_backend_detail() -> None:
@@ -1199,6 +1268,12 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
     assert "manifest_file" in output
     assert "backend" in output
     assert "backend_detail" in output
+    assert "primary_metric" in output
+    assert "primary_value" in output
+    assert "secondary_metric" in output
+    assert "secondary_value" in output
+    assert "final_loss" in output
+    assert "final_theta" in output
     assert "pennylane" in output
     assert "noise=0.05" in output
     assert "value=0.5" in output
@@ -1221,7 +1296,8 @@ def test_format_artifact_comparison_handles_mixed_experiments() -> None:
     assert "gradient_update" in output
     assert "client_objectives" in output
     assert "client-objectives-demo" in output
-    assert "n/a" in output
+    assert "mean_local_loss" in output
+    assert "aggregated_result" in output
     assert "0.499612" in output
 
 

@@ -86,7 +86,7 @@ Then compare them:
 python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
 ```
 
-`compare_artifacts.py` is dependency-free. It prints run_id, manifest name, manifest file, backend name, backend details, experiment, rounds, final_theta, and final_loss for each artifact in a plain text table. Backend-aware artifacts show details such as `base`, `noise`, and `seed` for noisy backends, or `value` for constant backends. It is not a dashboard or experiment tracking system.
+`compare_artifacts.py` is dependency-free. It prints run_id, manifest name, manifest file, backend name, backend details, experiment, and experiment-aware primary/secondary metrics. For `gradient_update`, it compares `final_loss` and `final_theta`. For `client_objectives`, it compares `mean_local_loss` and `aggregated_result`. It is not a dashboard or experiment tracking system.
 
 ## Manifest examples
 

@@ -244,13 +244,12 @@ The comparison table shows key fields side by side:
 ```text
 qfl-mini: artifact comparison
 
-run_id                                          manifest                  manifest_file                  backend    backend_detail                       experiment       rounds  final_theta  final_loss
-run_from_manifest_gradient_update_...           default-gradient-update   gradient_update.json           pennylane  -                                    gradient_update  3       0.773778     0.608376
-run_from_manifest_gradient_update_...           noisy-gradient-update     gradient_update_noisy.json     noisy      base=pennylane, noise=0.05, seed=42  gradient_update  3       0.752743     0.546736
-run_from_manifest_gradient_update_...           constant-gradient-update  gradient_update_constant.json  constant   value=0.5                            gradient_update  3       0.500000     0.250000
+run_id                                          manifest                 manifest_file           backend    backend_detail  experiment         primary_metric   primary_value  secondary_metric   secondary_value
+run_from_manifest_gradient_update_...           default-gradient-update  gradient_update.json    pennylane  -               gradient_update    final_loss       0.608376       final_theta        0.773778
+run_from_manifest_client_objectives_...         client-objectives-demo   client_objectives.json  pennylane  -               client_objectives  mean_local_loss  0.499612       aggregated_result  0.838387
 ```
 
-This is a plain text, dependency-free helper. It is not a dashboard or experiment tracking server.
+The `primary_metric` and `secondary_metric` columns depend on the experiment type. This is a plain text, dependency-free helper. It is not a dashboard or experiment tracking server.
 
 ---
 
@@ -429,8 +428,8 @@ The saved artifact records:
 - `result.mean_local_loss`
 
 Client-objective artifacts can be compared with gradient artifacts. In the
-plain text comparison table, `final_loss` shows `mean_local_loss` for
-`client_objectives` runs, while `rounds` and `final_theta` show `n/a`.
+plain text comparison table, `primary_metric` is `mean_local_loss` and
+`secondary_metric` is `aggregated_result` for `client_objectives` runs.
 
 ---
 

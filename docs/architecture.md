@@ -114,16 +114,21 @@ Saved artifact files
   -> summarize_artifact()     extracts run_id, experiment, manifest_name,
                               manifest_version, manifest_path, manifest_file,
                               backend_name, backend_class, backend_detail,
-                              num_rounds, final_theta, final_loss
+                              legacy fields, and experiment-aware metrics
   -> format_artifact_comparison()  produces a plain text table
                               (columns: run_id, manifest, manifest_file,
-                               backend, backend_detail, experiment, rounds,
-                               final_theta, final_loss)
+                               backend, backend_detail, experiment,
+                               primary_metric, primary_value,
+                               secondary_metric, secondary_value)
 ```
 
 Backend detail extraction is display-only. It reads metadata already stored in
 artifacts, such as `base_backend`, `noise`, and `seed` for `NoisyBackend`, or
 `value` for `ConstantBackend`.
+
+Comparison also extracts experiment-aware primary and secondary metrics from
+artifact JSON. For example, `gradient_update` compares final loss and final
+theta, while `client_objectives` compares mean local loss and aggregated result.
 
 ## Why the design is intentionally small
 

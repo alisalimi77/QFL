@@ -217,13 +217,12 @@ Example output:
 ```text
 qfl-mini: artifact comparison
 
-run_id                                          manifest                  manifest_file                  backend    backend_detail                       experiment       rounds  final_theta  final_loss
-run_from_manifest_gradient_update_...           default-gradient-update   gradient_update.json           pennylane  -                                    gradient_update  3       0.773778     0.608376
-run_from_manifest_gradient_update_...           noisy-gradient-update     gradient_update_noisy.json     noisy      base=pennylane, noise=0.05, seed=42  gradient_update  3       0.752743     0.546736
-run_from_manifest_gradient_update_...           constant-gradient-update  gradient_update_constant.json  constant   value=0.5                            gradient_update  3       0.500000     0.250000
+run_id                                          manifest                 manifest_file           backend    backend_detail  experiment         primary_metric   primary_value  secondary_metric   secondary_value
+run_from_manifest_gradient_update_...           default-gradient-update  gradient_update.json    pennylane  -               gradient_update    final_loss       0.608376       final_theta        0.773778
+run_from_manifest_client_objectives_...         client-objectives-demo   client_objectives.json  pennylane  -               client_objectives  mean_local_loss  0.499612       aggregated_result  0.838387
 ```
 
-Comparison shows backend details when available: `NoisyBackend` includes base backend, noise, and seed; `ConstantBackend` includes value. This is a lightweight comparison helper — no dashboard, no database, no plotting.
+Comparison is experiment-aware. For `gradient_update`, the primary metric is `final_loss` and the secondary metric is `final_theta`. For `client_objectives`, the primary metric is `mean_local_loss` and the secondary metric is `aggregated_result`. Backend details are still shown when available. This is a lightweight comparison helper — no dashboard, no database, no plotting.
 
 ## Example output
 
