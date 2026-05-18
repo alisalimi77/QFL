@@ -60,7 +60,7 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 
 **Client-Specific Objective** — a local objective context where each client compares its own circuit result against its own target. This is a small step toward federated objective evaluation, not dataset-based learning.
 
-**Experiment Manifest** — a JSON v0.1 file that declares a supported `gradient_update` experiment, including optional built-in backend config.
+**Experiment Manifest** — a JSON v0.1 file that declares a supported experiment, currently `gradient_update` or `client_objectives`, including optional built-in backend config.
 
 **Reproducibility Artifact** — a timestamped JSON file containing the run trace and environment metadata.
 
@@ -143,7 +143,7 @@ The manifest describes the experiment declaratively:
 - `manifest_version` is currently `"0.1"`
 - `name` gives each manifest a human-readable identifier visible in artifact comparison output
 - `description` documents the manifest's purpose (optional)
-- only `gradient_update` is supported for now; JSON only
+- supported experiments are `gradient_update` and `client_objectives`; JSON only
 - `backend` is optional; if omitted, it defaults to `{"type": "pennylane"}`
 
 Manifests can select one of qfl-mini's built-in backends:
@@ -175,6 +175,18 @@ Manifests can select one of qfl-mini's built-in backends:
 This is an explicit built-in backend builder, not arbitrary Python imports, a
 plugin system, or support for external quantum SDKs.
 
+The `client_objectives` manifest uses local client targets, not datasets:
+
+```json
+"clients": [
+  {
+    "client_id": "client_1",
+    "theta": 0.2,
+    "target": 0.0
+  }
+]
+```
+
 Several example manifests are provided:
 
 | Manifest                           | Name                       | Backend             | Purpose                        |
@@ -185,9 +197,11 @@ Several example manifests are provided:
 | `gradient_update_more_rounds.json` | `more-rounds`              | `pennylane` default | More rounds                    |
 | `gradient_update_noisy.json`       | `noisy-gradient-update`    | `noisy`             | Deterministic noisy backend    |
 | `gradient_update_constant.json`    | `constant-gradient-update` | `constant`          | Deterministic constant backend |
+| `client_objectives.json`           | `client-objectives-demo`   | `pennylane`         | Client-specific objectives     |
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update_low_lr.json
+python examples/run_from_manifest.py examples/manifests/client_objectives.json
 ```
 
 ## Compare artifacts
@@ -278,7 +292,7 @@ python -m compileall qflmini examples
 
 ## Current status
 
-Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is done/active; Phase 3 and Phase 4 are active.
+Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is done/active; Phase 3 and Phase 4 are active; Phase 5 is started.
 
 **Implemented:**
 
@@ -295,9 +309,10 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is don
 - objective/loss tracking
 - finite-difference gradient update demo
 - client-specific objective evaluation and mean local loss
-- JSON manifest v0 for gradient update experiments
+- JSON manifest v0.1 for gradient update and client objective experiments
+- manifest-driven client-specific objective evaluation
 - manifest versioning (`manifest_version`) and names (`name`)
-- multiple example manifests for `gradient_update`
+- multiple example manifests for `gradient_update` plus `client_objectives.json`
 - backend-aware manifest experiments for built-in backends
 - dependency-free artifact comparison helper with backend details
 - manifest provenance recorded in artifacts (`manifest_path`)
@@ -317,7 +332,7 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is don
 - arbitrary backend loading or imports from manifests
 - backend plugin system
 - YAML manifests
-- manifest support for other experiment types
+- manifest support beyond `gradient_update` and `client_objectives`
 - general config/plugin framework
 - dashboard or plotting tools
 - Qiskit / Braket / Cirq adapters

@@ -35,7 +35,7 @@ SDKs.
 
 ## Backend-Aware Manifest
 
-A backend-aware manifest is still a JSON v0.1 `gradient_update` manifest. It adds an optional `backend` object using one of the built-in backend configs:
+A backend-aware manifest is still a JSON v0.1 manifest. It adds an optional `backend` object using one of the built-in backend configs:
 
 - `{"type": "pennylane"}`
 - `{"type": "constant", "value": 0.5}`
@@ -88,7 +88,7 @@ A client-specific objective gives each quantum client its own local target. The 
 client_loss = (client_result - client_target)^2
 ```
 
-The `run_client_objectives.py` example reports each client result, each local target, each local loss, the aggregated result, and the mean local loss. This demonstrates different local objective contexts across clients. It is not dataset training, not FedAvg, and not full QFL training.
+The `run_client_objectives.py` example reports each client result, each local target, each local loss, the aggregated result, and the mean local loss. The same evaluation can be run from `examples/manifests/client_objectives.json`. This demonstrates different local objective contexts across clients. It is not dataset training, not FedAvg, and not full QFL training.
 
 ## Deterministic Noise
 
@@ -150,16 +150,19 @@ It is intentionally plain text and dependency-free. It is not a dashboard, not a
 
 ## Experiment Manifest
 
-A manifest is a small JSON file that declares the parameters for a supported experiment — number of clients, rounds, initial theta, learning rate, target, epsilon, and optionally a built-in backend config. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.
+A manifest is a small JSON file that declares the parameters for a supported experiment. qfl-mini currently supports `gradient_update` and `client_objectives` manifests. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.
 
 Each manifest includes:
 
 - `manifest_version` — currently `"0.1"`. Required. Controls which validation rules apply.
 - `name` — a short human-readable identifier such as `"default-gradient-update"`. Required. Appears in artifact comparison output so runs can be told apart at a glance.
 - `description` — a sentence explaining what the manifest does. Optional; defaults to empty string.
+- `experiment` — currently either `"gradient_update"` or `"client_objectives"`.
 - `backend` — optional built-in backend config. If omitted, it defaults to `{"type": "pennylane"}`.
 
-In the current version, manifests are limited to finite-difference gradient update experiments. Backend configs are limited to `pennylane`, `constant`, and `noisy`; there are no arbitrary imports or plugin paths in manifest files. Multiple example manifests live under `examples/manifests/`.
+For `gradient_update`, manifests include fields such as `num_clients`, `num_rounds`, `initial_theta`, `learning_rate`, `target`, and `epsilon`. For `client_objectives`, manifests include a `clients` list where each client has `client_id`, `theta`, and `target`.
+
+Backend configs are limited to `pennylane`, `constant`, and `noisy`; there are no arbitrary imports or plugin paths in manifest files. Multiple example manifests live under `examples/manifests/`.
 
 ## Run ID
 

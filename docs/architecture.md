@@ -81,17 +81,24 @@ QuantumClient -> local target -> local loss -> mean local loss artifact
 ```text
 JSON manifest file
   -> load_json_manifest()      reads and parses JSON
-  -> validate_gradient_update_manifest()  checks types and constraints,
-       normalizes manifest_version, name, description, numeric fields,
-       and backend config
+  -> validate_manifest()       dispatches by experiment type
+  -> validate_gradient_update_manifest() or validate_client_objectives_manifest()
+       checks types and constraints, normalizes manifest_version, name,
+       description, experiment-specific fields, and backend config
   -> build_backend_from_config()  explicitly builds one built-in backend
-  -> creates QuantumClient objects with the selected backend
-  -> creates FiniteDifferenceGradientCoordinator
-  -> run_updates(num_rounds)
-  -> format_gradient_update_report()
+  -> gradient_update path:
+       creates QuantumClient objects with the selected backend
+       creates FiniteDifferenceGradientCoordinator
+       run_updates(num_rounds)
+       format_gradient_update_report()
+  -> client_objectives path:
+       creates QuantumClient objects with the selected backend
+       creates ClientObjective objects from manifest client targets
+       evaluate_client_objectives()
+       format_client_objectives_report()
   -> build_run_artifact({ manifest_path: posix_path, manifest: config,
-                          backend: get_backend_metadata(clients[0].backend),
-                          result: update_result })
+                          backend: get_backend_metadata(backend),
+                          result: result })
   -> save_json_artifact()
 ```
 

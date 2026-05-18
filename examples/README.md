@@ -25,6 +25,7 @@ python examples/run_client_objectives.py
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
+python examples/run_from_manifest.py examples/manifests/client_objectives.json
 python examples/run_custom_backend.py
 python examples/run_clean_vs_noisy_backend.py
 ```
@@ -44,12 +45,13 @@ Generated artifact JSON files are ignored by git; `runs/.gitkeep` keeps the dire
 
 **`run_client_objectives.py`** — evaluates two client-specific local objectives. Each client has its own target, local loss is computed per client, and the example reports mean local loss. Saves a JSON artifact.
 
-**`run_from_manifest.py`** — loads a JSON manifest file, validates it, and runs the specified experiment. Currently only `gradient_update` manifests are supported. The manifest defines clients, rounds, initial theta, learning rate, target, epsilon, and optionally one built-in backend config. Manifests without `backend` default to PennyLane. Saves a JSON artifact that includes the normalized manifest config, backend metadata, and the run result.
+**`run_from_manifest.py`** — loads a JSON manifest file, validates it, and runs the specified experiment. Currently `gradient_update` and `client_objectives` manifests are supported. Gradient manifests define clients, rounds, initial theta, learning rate, target, epsilon, and optionally one built-in backend config. Client objective manifests define client IDs, theta values, and local targets. Manifests without `backend` default to PennyLane. Saves a JSON artifact that includes the normalized manifest config, backend metadata, and the run result.
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
+python examples/run_from_manifest.py examples/manifests/client_objectives.json
 ```
 
 **`run_custom_backend.py`** — demonstrates backend injection without artifacts. Two clients use `ConstantBackend` with fixed values (0.2 and 0.6). The coordinator aggregates them to 0.4. No artifact is saved.
@@ -75,6 +77,7 @@ python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_more_rounds.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
+python examples/run_from_manifest.py examples/manifests/client_objectives.json
 ```
 
 Then compare them:
@@ -95,8 +98,9 @@ python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
 | `gradient_update_more_rounds.json`   | `more-rounds`              | `pennylane` default | Same experiment with more update rounds      |
 | `gradient_update_noisy.json`         | `noisy-gradient-update`    | `noisy`             | Deterministic noisy backend                  |
 | `gradient_update_constant.json`      | `constant-gradient-update` | `constant`          | Deterministic constant backend               |
+| `client_objectives.json`             | `client-objectives-demo`   | `pennylane`         | Client-specific objective evaluation         |
 
-All manifests use `"manifest_version": "0.1"` and `"experiment": "gradient_update"`. Backend-aware manifests are still JSON v0.1 and only support built-in backend configs: `pennylane`, `constant`, and `noisy`. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
+All manifests use `"manifest_version": "0.1"` and either `"experiment": "gradient_update"` or `"experiment": "client_objectives"`. Backend-aware manifests are still JSON v0.1 and only support built-in backend configs: `pennylane`, `constant`, and `noisy`. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
@@ -105,4 +109,5 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_target_h
 python examples/run_from_manifest.py examples/manifests/gradient_update_more_rounds.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
+python examples/run_from_manifest.py examples/manifests/client_objectives.json
 ```

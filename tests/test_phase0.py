@@ -26,10 +26,14 @@ from qflmini.comparison import (
 )
 from qflmini.manifest import (
     build_backend_from_config,
+    load_client_objectives_manifest,
     load_gradient_update_manifest,
     load_json_manifest,
+    load_manifest,
     validate_backend_config,
+    validate_client_objectives_manifest,
     validate_gradient_update_manifest,
+    validate_manifest,
 )
 from qflmini.backends import ConstantBackend, NoisyBackend, PennyLaneBackend, get_backend_metadata
 from qflmini.objectives import (
@@ -410,6 +414,18 @@ _VALID_MANIFEST = {
 }
 
 
+_VALID_CLIENT_OBJECTIVES_MANIFEST = {
+    "manifest_version": "0.1",
+    "name": "client-objectives-demo",
+    "description": "Client-specific objective evaluation with local targets.",
+    "experiment": "client_objectives",
+    "clients": [
+        {"client_id": "client_1", "theta": 0.0, "target": 0.0},
+        {"client_id": "client_2", "theta": 0.0, "target": 0.5},
+    ],
+}
+
+
 def test_load_json_manifest_returns_dict(tmp_path) -> None:
     manifest_file = tmp_path / "manifest.json"
     manifest_file.write_text('{"experiment": "gradient_update"}', encoding="utf-8")
@@ -577,6 +593,172 @@ def test_build_backend_from_config_returns_noisy_backend() -> None:
     assert metadata["seed"] == "42"
 
 
+def test_validate_client_objectives_manifest_returns_normalized_values() -> None:
+    config = validate_client_objectives_manifest(_VALID_CLIENT_OBJECTIVES_MANIFEST)
+
+    assert config["manifest_version"] == "0.1"
+    assert config["name"] == "client-objectives-demo"
+    assert config["description"] == "Client-specific objective evaluation with local targets."
+    assert config["experiment"] == "client_objectives"
+    assert config["backend"] == {"type": "pennylane"}
+    assert config["clients"] == [
+        {"client_id": "client_1", "theta": 0.0, "target": 0.0},
+        {"client_id": "client_2", "theta": 0.0, "target": 0.5},
+    ]
+
+
+def test_validate_client_objectives_manifest_missing_clients_raises() -> None:
+    bad = dict(_VALID_CLIENT_OBJECTIVES_MANIFEST)
+    del bad["clients"]
+
+    with pytest.raises(ValueError, match="clients"):
+        validate_client_objectives_manifest(bad)
+
+
+def test_validate_client_objectives_manifest_empty_clients_raises() -> None:
+    bad = dict(_VALID_CLIENT_OBJECTIVES_MANIFEST, clients=[])
+
+    with pytest.raises(ValueError, match="clients"):
+        validate_client_objectives_manifest(bad)
+
+
+def test_validate_client_objectives_manifest_client_must_be_object() -> None:
+    bad = dict(_VALID_CLIENT_OBJECTIVES_MANIFEST, clients=["client_1"])
+
+    with pytest.raises(ValueError, match="clients\\[0\\]"):
+        validate_client_objectives_manifest(bad)
+
+
+def test_validate_client_objectives_manifest_missing_client_id_raises() -> None:
+    bad = dict(
+        _VALID_CLIENT_OBJECTIVES_MANIFEST,
+        clients=[{"theta": 0.2, "target": 0.0}],
+    )
+
+    with pytest.raises(ValueError, match="client_id"):
+        validate_client_objectives_manifest(bad)
+
+
+def test_validate_client_objectives_manifest_blank_client_id_raises() -> None:
+    bad = dict(
+        _VALID_CLIENT_OBJECTIVES_MANIFEST,
+        clients=[{"client_id": "   ", "theta": 0.2, "target": 0.0}],
+    )
+
+    with pytest.raises(ValueError, match="client_id"):
+        validate_client_objectives_manifest(bad)
+
+
+def test_validate_client_objectives_manifest_non_numeric_theta_raises() -> None:
+    bad = dict(
+        _VALID_CLIENT_OBJECTIVES_MANIFEST,
+        clients=[{"client_id": "client_1", "theta": "0.2", "target": 0.0}],
+    )
+
+    with pytest.raises(ValueError, match="theta"):
+        validate_client_objectives_manifest(bad)
+
+
+def test_validate_client_objectives_manifest_non_numeric_target_raises() -> None:
+    bad = dict(
+        _VALID_CLIENT_OBJECTIVES_MANIFEST,
+        clients=[{"client_id": "client_1", "theta": 0.2, "target": "0.0"}],
+    )
+
+    with pytest.raises(ValueError, match="target"):
+        validate_client_objectives_manifest(bad)
+
+
+def test_validate_client_objectives_manifest_accepts_backend_config() -> None:
+    config = validate_client_objectives_manifest(
+        {
+            **_VALID_CLIENT_OBJECTIVES_MANIFEST,
+            "backend": {"type": "constant", "value": 0.5},
+        }
+    )
+
+    assert config["backend"] == {"type": "constant", "value": 0.5}
+
+
+def test_validate_manifest_dispatches_gradient_update() -> None:
+    config = validate_manifest(_VALID_MANIFEST)
+
+    assert config["experiment"] == "gradient_update"
+
+
+def test_validate_manifest_dispatches_client_objectives() -> None:
+    config = validate_manifest(_VALID_CLIENT_OBJECTIVES_MANIFEST)
+
+    assert config["experiment"] == "client_objectives"
+
+
+def test_validate_manifest_rejects_unsupported_experiment() -> None:
+    bad = dict(_VALID_MANIFEST, experiment="unknown")
+
+    with pytest.raises(ValueError, match="Unsupported experiment type"):
+        validate_manifest(bad)
+
+
+def test_load_manifest_loads_and_validates(tmp_path) -> None:
+    manifest_file = tmp_path / "client_objectives.json"
+    manifest_file.write_text(
+        json.dumps(_VALID_CLIENT_OBJECTIVES_MANIFEST),
+        encoding="utf-8",
+    )
+
+    config = load_manifest(manifest_file)
+
+    assert config["experiment"] == "client_objectives"
+
+
+def test_load_client_objectives_manifest_loads_and_validates(tmp_path) -> None:
+    manifest_file = tmp_path / "client_objectives.json"
+    manifest_file.write_text(
+        json.dumps(_VALID_CLIENT_OBJECTIVES_MANIFEST),
+        encoding="utf-8",
+    )
+
+    config = load_client_objectives_manifest(manifest_file)
+
+    assert config["experiment"] == "client_objectives"
+    assert len(config["clients"]) == 2
+
+
+def test_build_backend_from_client_objectives_manifest() -> None:
+    config = validate_client_objectives_manifest(
+        {
+            **_VALID_CLIENT_OBJECTIVES_MANIFEST,
+            "backend": {"type": "constant", "value": 0.5},
+        }
+    )
+
+    backend = build_backend_from_config(config["backend"])
+
+    assert isinstance(backend, ConstantBackend)
+
+
+def test_client_objectives_manifest_run_path_with_constant_backend() -> None:
+    config = validate_client_objectives_manifest(
+        {
+            **_VALID_CLIENT_OBJECTIVES_MANIFEST,
+            "backend": {"type": "constant", "value": 0.5},
+        }
+    )
+    backend = build_backend_from_config(config["backend"])
+    objectives = [
+        ClientObjective(
+            QuantumClient(client["client_id"], theta=client["theta"], backend=backend),
+            target=client["target"],
+        )
+        for client in config["clients"]
+    ]
+
+    result = evaluate_client_objectives(objectives)
+
+    assert result["aggregated_result"] == pytest.approx(0.5)
+    assert result["mean_local_loss"] == pytest.approx(0.125)
+
+
 def test_validate_gradient_update_manifest_missing_field_raises() -> None:
     bad = dict(_VALID_MANIFEST)
     del bad["num_rounds"]
@@ -668,6 +850,37 @@ def test_manifest_run_artifact_shape(tmp_path) -> None:
     assert saved_data["run"]["manifest"]["experiment"] == "gradient_update"
 
 
+def test_client_objectives_manifest_artifact_shape(tmp_path) -> None:
+    config = validate_client_objectives_manifest(_VALID_CLIENT_OBJECTIVES_MANIFEST)
+    backend = build_backend_from_config(config["backend"])
+    objectives = [
+        ClientObjective(
+            QuantumClient(client["client_id"], theta=client["theta"], backend=backend),
+            target=client["target"],
+        )
+        for client in config["clients"]
+    ]
+    result = evaluate_client_objectives(objectives)
+
+    artifact = build_run_artifact(
+        example_name="run_from_manifest_client_objectives",
+        run_result={
+            "manifest_path": "examples/manifests/client_objectives.json",
+            "manifest": config,
+            "backend": get_backend_metadata(backend),
+            "result": result,
+        },
+    )
+    artifact_path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
+    saved_path = save_json_artifact(artifact, artifact_path)
+    saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
+
+    assert saved_data["run"]["manifest"]["experiment"] == "client_objectives"
+    assert saved_data["run"]["backend"]["name"] == "pennylane"
+    assert "client_objectives" in saved_data["run"]["result"]
+    assert "mean_local_loss" in saved_data["run"]["result"]
+
+
 def test_validate_manifest_missing_manifest_version_raises() -> None:
     bad = dict(_VALID_MANIFEST)
     del bad["manifest_version"]
@@ -720,9 +933,9 @@ def test_all_example_manifests_are_valid() -> None:
     assert len(manifest_files) > 0, "No manifest files found in examples/manifests/"
 
     for manifest_file in manifest_files:
-        config = load_gradient_update_manifest(manifest_file)
-        assert config["experiment"] == "gradient_update", (
-            f"{manifest_file.name}: expected experiment='gradient_update'"
+        config = load_manifest(manifest_file)
+        assert config["experiment"] in {"gradient_update", "client_objectives"}, (
+            f"{manifest_file.name}: expected supported experiment"
         )
 
 
@@ -767,6 +980,49 @@ _MANIFEST_ARTIFACT = {
                 {"loss": 0.511619},
                 {"loss": 0.412106},
             ],
+        },
+    },
+}
+
+
+_CLIENT_OBJECTIVES_MANIFEST_ARTIFACT = {
+    "run_id": "run_from_manifest_client_objectives_20260101T000002Z",
+    "example": "run_from_manifest_client_objectives",
+    "run": {
+        "manifest_path": "examples/manifests/client_objectives.json",
+        "manifest": {
+            "manifest_version": "0.1",
+            "name": "client-objectives-demo",
+            "experiment": "client_objectives",
+            "clients": [
+                {"client_id": "client_1", "theta": 0.2, "target": 0.0},
+                {"client_id": "client_2", "theta": 0.8, "target": 0.5},
+            ],
+        },
+        "backend": {
+            "name": "pennylane",
+            "class": "PennyLaneBackend",
+        },
+        "result": {
+            "num_clients": 2,
+            "client_objectives": [
+                {
+                    "client_id": "client_1",
+                    "theta": 0.2,
+                    "target": 0.0,
+                    "result": 0.980066,
+                    "loss": 0.96053,
+                },
+                {
+                    "client_id": "client_2",
+                    "theta": 0.8,
+                    "target": 0.5,
+                    "result": 0.696707,
+                    "loss": 0.038694,
+                },
+            ],
+            "aggregated_result": 0.838387,
+            "mean_local_loss": 0.499612,
         },
     },
 }
@@ -826,6 +1082,18 @@ def test_summarize_artifact_manifest_shape() -> None:
     assert summary["num_rounds"] == 5
     assert summary["final_theta"] == pytest.approx(0.972194)
     assert summary["final_loss"] == pytest.approx(0.412106)
+
+
+def test_summarize_artifact_client_objectives_shape() -> None:
+    summary = summarize_artifact(_CLIENT_OBJECTIVES_MANIFEST_ARTIFACT)
+
+    assert summary["experiment"] == "client_objectives"
+    assert summary["manifest_name"] == "client-objectives-demo"
+    assert summary["manifest_file"] == "client_objectives.json"
+    assert summary["num_rounds"] is None
+    assert summary["final_theta"] is None
+    assert summary["mean_local_loss"] == pytest.approx(0.499612)
+    assert summary["final_loss"] == pytest.approx(0.499612)
 
 
 def test_summarize_artifact_handles_missing_fields() -> None:
@@ -940,6 +1208,21 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
     assert "0.608376" in output
     assert "0.972194" in output
     assert "0.412106" in output
+
+
+def test_format_artifact_comparison_handles_mixed_experiments() -> None:
+    summaries = [
+        summarize_artifact(_MANIFEST_ARTIFACT),
+        summarize_artifact(_CLIENT_OBJECTIVES_MANIFEST_ARTIFACT),
+    ]
+
+    output = format_artifact_comparison(summaries)
+
+    assert "gradient_update" in output
+    assert "client_objectives" in output
+    assert "client-objectives-demo" in output
+    assert "n/a" in output
+    assert "0.499612" in output
 
 
 def test_format_artifact_comparison_empty_raises() -> None:

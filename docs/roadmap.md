@@ -39,7 +39,7 @@ For the current end-to-end workflow, see [walkthrough.md](walkthrough.md).
 
 Implemented:
 
-- JSON manifest v0 for finite-difference gradient update experiments
+- JSON manifest v0.1 for finite-difference gradient update experiments
 - `load_gradient_update_manifest()` loads and validates a JSON manifest file
 - `run_from_manifest.py` runs a gradient update experiment from a manifest
 - multiple example manifests showing different parameter settings (`learning_rate`, `target`, `num_rounds`)
@@ -122,11 +122,14 @@ Implemented:
 - per-client local target and local loss
 - mean local loss summary
 - artifact-producing `run_client_objectives.py` example
+- manifest-driven `client_objectives` experiment support
+- example `client_objectives.json` manifest
 
 Remaining planned items:
 
 - richer local objectives later
 - local data examples later
+- more manifest ergonomics later
 - FedAvg much later, if ever
 
 This phase is still not dataset training and not a full QFL training framework.

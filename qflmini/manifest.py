@@ -6,10 +6,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from qflmini.backends import ConstantBackend, NoisyBackend, PennyLaneBackend, QuantumBackend
+from qflmini.backends import (
+    ConstantBackend,
+    NoisyBackend,
+    PennyLaneBackend,
+    QuantumBackend,
+)
 
 SUPPORTED_MANIFEST_VERSION = "0.1"
 SUPPORTED_BACKEND_TYPES = {"pennylane", "constant", "noisy"}
+SUPPORTED_EXPERIMENTS = {"gradient_update", "client_objectives"}
 
 
 def load_json_manifest(path: str | Path) -> dict[str, Any]:
@@ -35,35 +41,20 @@ def load_json_manifest(path: str | Path) -> dict[str, Any]:
     return raw
 
 
-def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
-    """Validate a gradient update manifest and return a normalized config.
-
-    Args:
-        manifest: Raw manifest dictionary.
-
-    Returns:
-        Normalized configuration dictionary with correct types.
-
-    Raises:
-        ValueError: If any required field is missing or invalid.
-    """
-    required_fields = (
-        "manifest_version",
-        "name",
-        "experiment",
-        "num_clients",
-        "num_rounds",
-        "initial_theta",
-        "learning_rate",
-        "target",
-        "epsilon",
-    )
-    for field in required_fields:
+def _validate_common_manifest_fields(
+    manifest: dict[str, Any],
+    expected_experiment: str,
+) -> dict[str, Any]:
+    """Validate fields shared by all qfl-mini manifest types."""
+    for field in ("manifest_version", "name", "experiment"):
         if field not in manifest:
             raise ValueError(f"Manifest is missing required field: '{field}'.")
 
     manifest_version = manifest["manifest_version"]
-    if not isinstance(manifest_version, str) or manifest_version != SUPPORTED_MANIFEST_VERSION:
+    if (
+        not isinstance(manifest_version, str)
+        or manifest_version != SUPPORTED_MANIFEST_VERSION
+    ):
         raise ValueError(
             f"Unsupported manifest_version: expected '{SUPPORTED_MANIFEST_VERSION}', "
             f"got '{manifest_version}'."
@@ -82,10 +73,48 @@ def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any
         description = description_raw.strip()
 
     experiment = manifest["experiment"]
-    if experiment != "gradient_update":
+    if experiment != expected_experiment:
         raise ValueError(
-            f"Unsupported experiment type: '{experiment}'. Only 'gradient_update' is supported."
+            f"Unsupported experiment type: '{experiment}'. "
+            f"Expected '{expected_experiment}'."
         )
+
+    backend = validate_backend_config(manifest.get("backend", {"type": "pennylane"}))
+
+    return {
+        "manifest_version": SUPPORTED_MANIFEST_VERSION,
+        "name": name.strip(),
+        "description": description,
+        "experiment": expected_experiment,
+        "backend": backend,
+    }
+
+
+def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Validate a gradient update manifest and return a normalized config.
+
+    Args:
+        manifest: Raw manifest dictionary.
+
+    Returns:
+        Normalized configuration dictionary with correct types.
+
+    Raises:
+        ValueError: If any required field is missing or invalid.
+    """
+    required_fields = (
+        "num_clients",
+        "num_rounds",
+        "initial_theta",
+        "learning_rate",
+        "target",
+        "epsilon",
+    )
+    for field in required_fields:
+        if field not in manifest:
+            raise ValueError(f"Manifest is missing required field: '{field}'.")
+
+    common = _validate_common_manifest_fields(manifest, "gradient_update")
 
     num_clients = manifest["num_clients"]
     if not isinstance(num_clients, int):
@@ -119,14 +148,8 @@ def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any
     if epsilon <= 0:
         raise ValueError("'epsilon' must be positive.")
 
-    backend = validate_backend_config(manifest.get("backend", {"type": "pennylane"}))
-
     return {
-        "manifest_version": SUPPORTED_MANIFEST_VERSION,
-        "name": name.strip(),
-        "description": description,
-        "experiment": str(experiment),
-        "backend": backend,
+        **common,
         "num_clients": int(num_clients),
         "num_rounds": int(num_rounds),
         "initial_theta": float(initial_theta),
@@ -134,6 +157,85 @@ def validate_gradient_update_manifest(manifest: dict[str, Any]) -> dict[str, Any
         "target": float(target),
         "epsilon": float(epsilon),
     }
+
+
+def validate_client_objectives_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Validate a client objectives manifest and return a normalized config.
+
+    Args:
+        manifest: Raw manifest dictionary.
+
+    Returns:
+        Normalized configuration dictionary with client local targets.
+
+    Raises:
+        ValueError: If any required field is missing or invalid.
+    """
+    if "clients" not in manifest:
+        raise ValueError("Manifest is missing required field: 'clients'.")
+
+    common = _validate_common_manifest_fields(manifest, "client_objectives")
+
+    clients = manifest["clients"]
+    if not isinstance(clients, list):
+        raise ValueError("'clients' must be a list.")
+    if not clients:
+        raise ValueError("'clients' must not be empty.")
+
+    normalized_clients = []
+    for index, client in enumerate(clients):
+        if not isinstance(client, dict):
+            raise ValueError(f"'clients[{index}]' must be an object.")
+        for field in ("client_id", "theta", "target"):
+            if field not in client:
+                raise ValueError(f"'clients[{index}].{field}' is required.")
+
+        client_id = client["client_id"]
+        if not isinstance(client_id, str) or not client_id.strip():
+            raise ValueError(
+                f"'clients[{index}].client_id' must be a non-empty string."
+            )
+
+        theta = client["theta"]
+        if not isinstance(theta, (int, float)):
+            raise ValueError(f"'clients[{index}].theta' must be a number.")
+
+        target = client["target"]
+        if not isinstance(target, (int, float)):
+            raise ValueError(f"'clients[{index}].target' must be a number.")
+
+        normalized_clients.append(
+            {
+                "client_id": client_id.strip(),
+                "theta": float(theta),
+                "target": float(target),
+            }
+        )
+
+    return {
+        **common,
+        "clients": normalized_clients,
+    }
+
+
+def validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Validate any supported qfl-mini manifest and return normalized config."""
+    experiment = manifest.get("experiment")
+    if experiment == "gradient_update":
+        return validate_gradient_update_manifest(manifest)
+    if experiment == "client_objectives":
+        return validate_client_objectives_manifest(manifest)
+    supported = ", ".join(sorted(SUPPORTED_EXPERIMENTS))
+    raise ValueError(
+        f"Unsupported experiment type: '{experiment}'. "
+        f"Supported experiments are: {supported}."
+    )
+
+
+def load_manifest(path: str | Path) -> dict[str, Any]:
+    """Load and validate any supported qfl-mini manifest from a JSON file."""
+    raw = load_json_manifest(path)
+    return validate_manifest(raw)
 
 
 def load_gradient_update_manifest(path: str | Path) -> dict[str, Any]:
@@ -152,6 +254,12 @@ def load_gradient_update_manifest(path: str | Path) -> dict[str, Any]:
     """
     raw = load_json_manifest(path)
     return validate_gradient_update_manifest(raw)
+
+
+def load_client_objectives_manifest(path: str | Path) -> dict[str, Any]:
+    """Load and validate a client objectives manifest from a JSON file."""
+    raw = load_json_manifest(path)
+    return validate_client_objectives_manifest(raw)
 
 
 def validate_backend_config(config: Any) -> dict[str, Any]:

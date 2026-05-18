@@ -69,8 +69,8 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     Returns:
         A summary dictionary with keys: run_id, example, experiment, manifest_name,
         manifest_version, manifest_path, manifest_file, backend_name, backend_class,
-        backend_detail, num_rounds, final_theta, final_loss. Missing fields are
-        represented as None, "unknown", or "-".
+        backend_detail, num_rounds, final_theta, final_loss, mean_local_loss.
+        Missing fields are represented as None, "unknown", or "-".
     """
     run_id = artifact.get("run_id", "unknown")
     example = artifact.get("example", "unknown")
@@ -89,6 +89,8 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
         experiment = manifest_data["experiment"]
     elif "gradient_update" in str(example):
         experiment = "gradient_update"
+    elif "client_objectives" in str(example):
+        experiment = "client_objectives"
     else:
         experiment = "unknown"
 
@@ -115,10 +117,14 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     # final_theta
     final_theta = result_data.get("final_theta")
 
+    mean_local_loss = result_data.get("mean_local_loss")
+
     # final_loss — last round's loss
     rounds = result_data.get("rounds", [])
     if rounds and isinstance(rounds[-1], dict) and "loss" in rounds[-1]:
         final_loss = rounds[-1]["loss"]
+    elif mean_local_loss is not None:
+        final_loss = mean_local_loss
     else:
         final_loss = None
 
@@ -136,6 +142,7 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
         "num_rounds": num_rounds,
         "final_theta": final_theta,
         "final_loss": final_loss,
+        "mean_local_loss": mean_local_loss,
     }
 
 

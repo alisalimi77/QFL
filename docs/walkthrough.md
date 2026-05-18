@@ -171,7 +171,7 @@ manifest config alongside the run result and backend metadata.
 
 Current constraints:
 
-- only `gradient_update` is supported
+- supported experiments are `gradient_update` and `client_objectives`
 - JSON only, no YAML
 - backend configs are limited to built-in `pennylane`, `constant`, and `noisy`
 - no arbitrary imports, plugins, or external quantum SDK adapters
@@ -180,7 +180,7 @@ Current constraints:
 
 ## 7. Try multiple manifests
 
-Six example manifests are provided. Some change optimizer parameters; two select deterministic built-in backends:
+Seven example manifests are provided. Some change optimizer parameters, two select deterministic built-in backends, and one runs client-specific objectives:
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
@@ -189,6 +189,7 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_target_h
 python examples/run_from_manifest.py examples/manifests/gradient_update_more_rounds.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
+python examples/run_from_manifest.py examples/manifests/client_objectives.json
 ```
 
 | Manifest                             | Name                       | Backend             | What changes                   |
@@ -199,6 +200,7 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_constant
 | `gradient_update_more_rounds.json`   | `more-rounds`              | `pennylane` default | Five rounds instead of three   |
 | `gradient_update_noisy.json`         | `noisy-gradient-update`    | `noisy`             | Deterministic noisy backend    |
 | `gradient_update_constant.json`      | `constant-gradient-update` | `constant`          | Deterministic constant backend |
+| `client_objectives.json`             | `client-objectives-demo`   | `pennylane`         | Client-specific objectives     |
 
 Each run produces a separate artifact under `runs/`.
 
@@ -407,7 +409,32 @@ The artifact stores `client_objectives`, `aggregated_result`, and
 
 ---
 
-## 14. Run checks
+## 14. Run client-specific objectives from a manifest
+
+```bash
+python examples/run_from_manifest.py examples/manifests/client_objectives.json
+```
+
+This runs the same kind of local objective evaluation from JSON. The manifest
+declares a list of clients, and each client entry has `client_id`, `theta`, and
+`target`. There are still no datasets, no FedAvg fields, and no client-specific
+backend configs. All clients use the manifest-level backend.
+
+The saved artifact records:
+
+- `manifest_path`
+- normalized manifest config, including `clients`
+- backend metadata
+- `result.client_objectives`
+- `result.mean_local_loss`
+
+Client-objective artifacts can be compared with gradient artifacts. In the
+plain text comparison table, `final_loss` shows `mean_local_loss` for
+`client_objectives` runs, while `rounds` and `final_theta` show `n/a`.
+
+---
+
+## 15. Run checks
 
 ```bash
 python -m compileall qflmini examples
@@ -419,7 +446,7 @@ pytest
 
 ---
 
-## 15. Where this leaves the project
+## 16. Where this leaves the project
 
 ```text
 Phase 0: minimal execution                            [done]
@@ -427,7 +454,7 @@ Phase 1: parameter/loss/gradient traces               [done]
 Phase 2: manifest/artifact/comparison workflow        [done/active]
 Phase 3: backend abstraction                          [active]
 Phase 4: deterministic backend realism                [active]
-Phase 5: client-specific objectives                   [started]
+Phase 5: client-specific objectives + manifest support [active]
 ```
 
 **What the project can do now:**
@@ -439,6 +466,7 @@ Phase 5: client-specific objectives                   [started]
 - run finite-difference gradient updates
 - run experiments from JSON manifests
 - choose a built-in backend from JSON manifests
+- run backend-aware client-objective manifests
 - save timestamped reproducibility artifacts
 - compare artifacts in a plain text table
 - inject a custom backend in Python

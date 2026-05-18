@@ -1,0 +1,21 @@
+{
+  "manifest_version": "0.1",
+  "name": "client-objectives-demo",
+  "description": "Client-specific objective evaluation with local targets.",
+  "experiment": "client_objectives",
+  "backend": {
+    "type": "pennylane"
+  },
+  "clients": [
+    {
+      "client_id": "client_1",
+      "theta": 0.2,
+      "target": 0.0
+    },
+    {
+      "client_id": "client_2",
+      "theta": 0.8,
+      "target": 0.5
+    }
+  ]
+}
