@@ -187,12 +187,13 @@ Example output:
 ```text
 qfl-mini: artifact comparison
 
-run_id                                          manifest                   manifest_file                     experiment       rounds  final_theta  final_loss
-run_from_manifest_gradient_update_...           default-gradient-update    gradient_update.json              gradient_update  3       0.773778     0.608376
-run_from_manifest_gradient_update_...           more-rounds                gradient_update_more_rounds.json  gradient_update  5       0.972194     0.412106
+run_id                                          manifest                  manifest_file                  backend    backend_detail                       experiment       rounds  final_theta  final_loss
+run_from_manifest_gradient_update_...           default-gradient-update   gradient_update.json           pennylane  -                                    gradient_update  3       0.773778     0.608376
+run_from_manifest_gradient_update_...           noisy-gradient-update     gradient_update_noisy.json     noisy      base=pennylane, noise=0.05, seed=42  gradient_update  3       0.752743     0.546736
+run_from_manifest_gradient_update_...           constant-gradient-update  gradient_update_constant.json  constant   value=0.5                            gradient_update  3       0.500000     0.250000
 ```
 
-This is a lightweight comparison helper — no dashboard, no database, no plotting.
+Comparison shows backend details when available: `NoisyBackend` includes base backend, noise, and seed; `ConstantBackend` includes value. This is a lightweight comparison helper — no dashboard, no database, no plotting.
 
 ## Example output
 

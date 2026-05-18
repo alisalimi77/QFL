@@ -122,7 +122,7 @@ Artifacts are designed to be inspectable by humans and machines without any spec
 
 ## Artifact Comparison
 
-Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts summary fields (run ID, manifest name, manifest file, backend name, experiment, rounds, final theta, final loss), and prints a plain text table.
+Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts summary fields (run ID, manifest name, manifest file, backend name, backend details when available, experiment, rounds, final theta, final loss), and prints a plain text table.
 
 It is intentionally plain text and dependency-free. It is not a dashboard, not a plotting tool, and not an experiment tracking server.
 

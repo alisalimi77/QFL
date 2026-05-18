@@ -10,6 +10,7 @@ _MAX_RUN_ID_WIDTH = 46
 _MAX_MANIFEST_WIDTH = 25
 _MAX_MANIFEST_FILE_WIDTH = 40
 _MAX_BACKEND_WIDTH = 20
+_MAX_BACKEND_DETAIL_WIDTH = 40
 
 
 def load_artifact(path: str | Path) -> dict[str, Any]:
@@ -34,6 +35,28 @@ def load_artifact(path: str | Path) -> dict[str, Any]:
     return raw
 
 
+def _format_backend_detail(backend: dict[str, Any]) -> str:
+    """Format concise backend configuration details for comparison output."""
+    if not isinstance(backend, dict):
+        return "-"
+
+    backend_name = backend.get("name")
+    if backend_name == "noisy":
+        parts = []
+        if "base_backend" in backend:
+            parts.append(f"base={backend['base_backend']}")
+        if "noise" in backend:
+            parts.append(f"noise={backend['noise']}")
+        if "seed" in backend:
+            parts.append(f"seed={backend['seed']}")
+        return ", ".join(parts) if parts else "-"
+
+    if backend_name == "constant" and "value" in backend:
+        return f"value={backend['value']}"
+
+    return "-"
+
+
 def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     """Extract a normalized summary from a saved qfl-mini artifact.
 
@@ -46,8 +69,8 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     Returns:
         A summary dictionary with keys: run_id, example, experiment, manifest_name,
         manifest_version, manifest_path, manifest_file, backend_name, backend_class,
-        num_rounds, final_theta, final_loss. Missing fields are represented as None
-        or "unknown".
+        backend_detail, num_rounds, final_theta, final_loss. Missing fields are
+        represented as None, "unknown", or "-".
     """
     run_id = artifact.get("run_id", "unknown")
     example = artifact.get("example", "unknown")
@@ -84,6 +107,7 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     backend_data = run.get("backend", {})
     backend_name = backend_data.get("name", "unknown") if isinstance(backend_data, dict) else "unknown"
     backend_class = backend_data.get("class", "unknown") if isinstance(backend_data, dict) else "unknown"
+    backend_detail = _format_backend_detail(backend_data)
 
     # num_rounds
     num_rounds = result_data.get("num_rounds", manifest_data.get("num_rounds"))
@@ -108,6 +132,7 @@ def summarize_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
         "manifest_file": manifest_file,
         "backend_name": backend_name,
         "backend_class": backend_class,
+        "backend_detail": backend_detail,
         "num_rounds": num_rounds,
         "final_theta": final_theta,
         "final_loss": final_loss,
@@ -157,7 +182,17 @@ def format_artifact_comparison(summaries: list[dict[str, Any]]) -> str:
             return "n/a"
         return str(int(value))
 
-    headers = ["run_id", "manifest", "manifest_file", "backend", "experiment", "rounds", "final_theta", "final_loss"]
+    headers = [
+        "run_id",
+        "manifest",
+        "manifest_file",
+        "backend",
+        "backend_detail",
+        "experiment",
+        "rounds",
+        "final_theta",
+        "final_loss",
+    ]
 
     rows = [
         [
@@ -165,6 +200,7 @@ def format_artifact_comparison(summaries: list[dict[str, Any]]) -> str:
             _trunc(s["manifest_name"], _MAX_MANIFEST_WIDTH),
             _trunc(s["manifest_file"], _MAX_MANIFEST_FILE_WIDTH),
             _trunc(s["backend_name"], _MAX_BACKEND_WIDTH),
+            _trunc(s["backend_detail"], _MAX_BACKEND_DETAIL_WIDTH),
             str(s["experiment"]),
             _fmt_int(s["num_rounds"]),
             _fmt_float(s["final_theta"]),

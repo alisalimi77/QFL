@@ -763,6 +763,12 @@ _MANIFEST_ARTIFACT = {
 }
 
 
+def _manifest_artifact_with_backend(backend: dict) -> dict:
+    artifact = json.loads(json.dumps(_MANIFEST_ARTIFACT))
+    artifact["run"]["backend"] = backend
+    return artifact
+
+
 def test_load_artifact_returns_dict(tmp_path) -> None:
     artifact_file = tmp_path / "artifact.json"
     artifact_file.write_text(json.dumps(_DIRECT_ARTIFACT), encoding="utf-8")
@@ -791,6 +797,7 @@ def test_summarize_artifact_direct_shape() -> None:
     assert summary["manifest_file"] == "unknown"
     assert summary["backend_name"] == "unknown"
     assert summary["backend_class"] == "unknown"
+    assert summary["backend_detail"] == "-"
     assert summary["num_rounds"] == 3
     assert summary["final_theta"] == pytest.approx(0.773778)
     assert summary["final_loss"] == pytest.approx(0.608376)
@@ -806,6 +813,7 @@ def test_summarize_artifact_manifest_shape() -> None:
     assert summary["manifest_file"] == "gradient_update_more_rounds.json"
     assert summary["backend_name"] == "pennylane"
     assert summary["backend_class"] == "PennyLaneBackend"
+    assert summary["backend_detail"] == "-"
     assert summary["num_rounds"] == 5
     assert summary["final_theta"] == pytest.approx(0.972194)
     assert summary["final_loss"] == pytest.approx(0.412106)
@@ -823,9 +831,40 @@ def test_summarize_artifact_handles_missing_fields() -> None:
     assert summary["manifest_file"] == "unknown"
     assert summary["backend_name"] == "unknown"
     assert summary["backend_class"] == "unknown"
+    assert summary["backend_detail"] == "-"
     assert summary["num_rounds"] is None
     assert summary["final_theta"] is None
     assert summary["final_loss"] is None
+
+
+def test_summarize_artifact_noisy_backend_detail() -> None:
+    artifact = _manifest_artifact_with_backend(
+        {
+            "name": "noisy",
+            "class": "NoisyBackend",
+            "base_backend": "pennylane",
+            "noise": "0.05",
+            "seed": "42",
+        }
+    )
+
+    summary = summarize_artifact(artifact)
+
+    assert summary["backend_detail"] == "base=pennylane, noise=0.05, seed=42"
+
+
+def test_summarize_artifact_constant_backend_detail() -> None:
+    artifact = _manifest_artifact_with_backend(
+        {
+            "name": "constant",
+            "class": "ConstantBackend",
+            "value": "0.5",
+        }
+    )
+
+    summary = summarize_artifact(artifact)
+
+    assert summary["backend_detail"] == "value=0.5"
 
 
 def test_summarize_artifacts_preserves_order() -> None:
@@ -855,6 +894,26 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
     summaries = [
         summarize_artifact(_DIRECT_ARTIFACT),
         summarize_artifact(_MANIFEST_ARTIFACT),
+        summarize_artifact(
+            _manifest_artifact_with_backend(
+                {
+                    "name": "noisy",
+                    "class": "NoisyBackend",
+                    "base_backend": "pennylane",
+                    "noise": "0.05",
+                    "seed": "42",
+                }
+            )
+        ),
+        summarize_artifact(
+            _manifest_artifact_with_backend(
+                {
+                    "name": "constant",
+                    "class": "ConstantBackend",
+                    "value": "0.5",
+                }
+            )
+        ),
     ]
 
     output = format_artifact_comparison(summaries)
@@ -862,7 +921,10 @@ def test_format_artifact_comparison_contains_expected_content() -> None:
     assert "qfl-mini: artifact comparison" in output
     assert "manifest_file" in output
     assert "backend" in output
+    assert "backend_detail" in output
     assert "pennylane" in output
+    assert "noise=0.05" in output
+    assert "value=0.5" in output
     assert "gradient_update_more_rounds.json" in output
     assert "more-rounds" in output
     assert "0.773778" in output
