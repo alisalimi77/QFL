@@ -15,7 +15,8 @@ from qflmini.backends import (
 
 SUPPORTED_MANIFEST_VERSION = "0.1"
 SUPPORTED_BACKEND_TYPES = {"pennylane", "constant", "noisy"}
-SUPPORTED_EXPERIMENTS = {"gradient_update", "client_objectives"}
+SUPPORTED_AGGREGATION_TYPES = {"mean"}
+SUPPORTED_EXPERIMENTS = {"gradient_update", "client_objectives", "scalar_fedavg"}
 
 
 def load_json_manifest(path: str | Path) -> dict[str, Any]:
@@ -218,6 +219,109 @@ def validate_client_objectives_manifest(manifest: dict[str, Any]) -> dict[str, A
     }
 
 
+def validate_aggregation_config(config: Any) -> dict[str, Any]:
+    """Validate and normalize an aggregation configuration.
+
+    Only mean aggregation is supported for now. The explicit aggregation block
+    is a small scenario-runtime foundation, not a registry or plugin system.
+    """
+    if not isinstance(config, dict):
+        raise ValueError("'aggregation' must be an object.")
+
+    aggregation_type = config.get("type")
+    if not isinstance(aggregation_type, str) or not aggregation_type:
+        raise ValueError("'aggregation.type' is required and must be a string.")
+    if aggregation_type not in SUPPORTED_AGGREGATION_TYPES:
+        raise ValueError(
+            f"Unsupported aggregation type: '{aggregation_type}'. "
+            "Supported types are: mean."
+        )
+
+    return {"type": "mean"}
+
+
+def validate_scalar_fedavg_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Validate a scalar FedAvg manifest and return a normalized config."""
+    required_fields = (
+        "num_rounds",
+        "initial_theta",
+        "learning_rate",
+        "epsilon",
+        "clients",
+    )
+    for field in required_fields:
+        if field not in manifest:
+            raise ValueError(f"Manifest is missing required field: '{field}'.")
+
+    common = _validate_common_manifest_fields(manifest, "scalar_fedavg")
+    aggregation = validate_aggregation_config(
+        manifest.get("aggregation", {"type": "mean"})
+    )
+
+    num_rounds = manifest["num_rounds"]
+    if not isinstance(num_rounds, int):
+        raise ValueError("'num_rounds' must be an integer.")
+    if num_rounds < 1:
+        raise ValueError("'num_rounds' must be at least 1.")
+
+    initial_theta = manifest["initial_theta"]
+    if not isinstance(initial_theta, (int, float)):
+        raise ValueError("'initial_theta' must be a number.")
+
+    learning_rate = manifest["learning_rate"]
+    if not isinstance(learning_rate, (int, float)):
+        raise ValueError("'learning_rate' must be a number.")
+    if learning_rate <= 0:
+        raise ValueError("'learning_rate' must be positive.")
+
+    epsilon = manifest["epsilon"]
+    if not isinstance(epsilon, (int, float)):
+        raise ValueError("'epsilon' must be a number.")
+    if epsilon <= 0:
+        raise ValueError("'epsilon' must be positive.")
+
+    clients = manifest["clients"]
+    if not isinstance(clients, list):
+        raise ValueError("'clients' must be a list.")
+    if not clients:
+        raise ValueError("'clients' must not be empty.")
+
+    normalized_clients = []
+    for index, client in enumerate(clients):
+        if not isinstance(client, dict):
+            raise ValueError(f"'clients[{index}]' must be an object.")
+        for field in ("client_id", "target"):
+            if field not in client:
+                raise ValueError(f"'clients[{index}].{field}' is required.")
+
+        client_id = client["client_id"]
+        if not isinstance(client_id, str) or not client_id.strip():
+            raise ValueError(
+                f"'clients[{index}].client_id' must be a non-empty string."
+            )
+
+        target = client["target"]
+        if not isinstance(target, (int, float)):
+            raise ValueError(f"'clients[{index}].target' must be a number.")
+
+        normalized_clients.append(
+            {
+                "client_id": client_id.strip(),
+                "target": float(target),
+            }
+        )
+
+    return {
+        **common,
+        "aggregation": aggregation,
+        "num_rounds": int(num_rounds),
+        "initial_theta": float(initial_theta),
+        "learning_rate": float(learning_rate),
+        "epsilon": float(epsilon),
+        "clients": normalized_clients,
+    }
+
+
 def validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
     """Validate any supported qfl-mini manifest and return normalized config."""
     experiment = manifest.get("experiment")
@@ -225,6 +329,8 @@ def validate_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
         return validate_gradient_update_manifest(manifest)
     if experiment == "client_objectives":
         return validate_client_objectives_manifest(manifest)
+    if experiment == "scalar_fedavg":
+        return validate_scalar_fedavg_manifest(manifest)
     supported = ", ".join(sorted(SUPPORTED_EXPERIMENTS))
     raise ValueError(
         f"Unsupported experiment type: '{experiment}'. "
@@ -260,6 +366,12 @@ def load_client_objectives_manifest(path: str | Path) -> dict[str, Any]:
     """Load and validate a client objectives manifest from a JSON file."""
     raw = load_json_manifest(path)
     return validate_client_objectives_manifest(raw)
+
+
+def load_scalar_fedavg_manifest(path: str | Path) -> dict[str, Any]:
+    """Load and validate a scalar FedAvg manifest from a JSON file."""
+    raw = load_json_manifest(path)
+    return validate_scalar_fedavg_manifest(raw)
 
 
 def validate_backend_config(config: Any) -> dict[str, Any]:

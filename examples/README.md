@@ -28,6 +28,7 @@ python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 python examples/run_from_manifest.py examples/manifests/client_objectives.json
+python examples/run_from_manifest.py examples/manifests/scalar_fedavg.json
 python examples/run_custom_backend.py
 python examples/run_clean_vs_noisy_backend.py
 ```
@@ -53,13 +54,14 @@ Generated artifact JSON files are ignored by git; `runs/.gitkeep` keeps the dire
 python examples/run_scalar_fedavg.py
 ```
 
-**`run_from_manifest.py`** — loads a JSON manifest file, validates it, and runs the specified experiment. Currently `gradient_update` and `client_objectives` manifests are supported. Gradient manifests define clients, rounds, initial theta, learning rate, target, epsilon, and optionally one built-in backend config. Client objective manifests define client IDs, theta values, and local targets. Manifests without `backend` default to PennyLane. Saves a JSON artifact that includes the normalized manifest config, backend metadata, and the run result.
+**`run_from_manifest.py`** — loads a JSON manifest file, validates it, and runs the specified experiment. Currently `gradient_update`, `client_objectives`, and `scalar_fedavg` manifests are supported. Gradient manifests define clients, rounds, initial theta, learning rate, target, epsilon, and optionally one built-in backend config. Client objective manifests define client IDs, theta values, and local targets. Scalar FedAvg manifests define clients, local targets, rounds, learning rate, epsilon, backend, and mean aggregation. Manifests without `backend` default to PennyLane. Saves a JSON artifact that includes the normalized manifest config, backend metadata, and the run result.
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 python examples/run_from_manifest.py examples/manifests/client_objectives.json
+python examples/run_from_manifest.py examples/manifests/scalar_fedavg.json
 ```
 
 **`run_custom_backend.py`** — demonstrates backend injection without artifacts. Two clients use `ConstantBackend` with fixed values (0.2 and 0.6). The coordinator aggregates them to 0.4. No artifact is saved.
@@ -86,6 +88,7 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_more_rou
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 python examples/run_from_manifest.py examples/manifests/client_objectives.json
+python examples/run_from_manifest.py examples/manifests/scalar_fedavg.json
 ```
 
 Then compare them:
@@ -94,7 +97,7 @@ Then compare them:
 python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
 ```
 
-`compare_artifacts.py` is dependency-free. It prints run_id, manifest name, manifest file, backend name, backend details, experiment, and experiment-aware primary/secondary metrics. For `gradient_update`, it compares `final_loss` and `final_theta`. For `client_objectives`, it compares `mean_local_loss` and `aggregated_result`. For direct scalar FedAvg artifacts, it compares `final_mean_local_loss` and `final_theta`. It is not a dashboard or experiment tracking system.
+`compare_artifacts.py` is dependency-free. It prints run_id, manifest name, manifest file, backend name, backend details, experiment, and experiment-aware primary/secondary metrics. For `gradient_update`, it compares `final_loss` and `final_theta`. For `client_objectives`, it compares `mean_local_loss` and `aggregated_result`. For scalar FedAvg artifacts, it compares `final_mean_local_loss` and `final_theta`. It is not a dashboard or experiment tracking system.
 
 ## Manifest examples
 
@@ -107,8 +110,9 @@ python examples/compare_artifacts.py runs/<artifact1>.json runs/<artifact2>.json
 | `gradient_update_noisy.json`         | `noisy-gradient-update`    | `noisy`             | Deterministic noisy backend                  |
 | `gradient_update_constant.json`      | `constant-gradient-update` | `constant`          | Deterministic constant backend               |
 | `client_objectives.json`             | `client-objectives-demo`   | `pennylane`         | Client-specific objective evaluation         |
+| `scalar_fedavg.json`                 | `scalar-fedavg-demo`       | `pennylane`         | Transparent scalar FedAvg with mean aggregation |
 
-All manifests use `"manifest_version": "0.1"` and either `"experiment": "gradient_update"` or `"experiment": "client_objectives"`. Backend-aware manifests are still JSON v0.1 and only support built-in backend configs: `pennylane`, `constant`, and `noisy`. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
+All manifests use `"manifest_version": "0.1"` and `"experiment": "gradient_update"`, `"experiment": "client_objectives"`, or `"experiment": "scalar_fedavg"`. Backend-aware manifests are still JSON v0.1 and only support built-in backend configs: `pennylane`, `constant`, and `noisy`. Scalar FedAvg manifests also include `"aggregation": {"type": "mean"}`, and the resulting artifact records aggregation inputs and output. Artifact-producing runs save timestamped JSON artifacts under `runs/`.
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
@@ -118,4 +122,5 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_more_rou
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 python examples/run_from_manifest.py examples/manifests/client_objectives.json
+python examples/run_from_manifest.py examples/manifests/scalar_fedavg.json
 ```

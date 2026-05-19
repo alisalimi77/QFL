@@ -171,7 +171,7 @@ manifest config alongside the run result and backend metadata.
 
 Current constraints:
 
-- supported experiments are `gradient_update` and `client_objectives`
+- supported experiments are `gradient_update`, `client_objectives`, and `scalar_fedavg`
 - JSON only, no YAML
 - backend configs are limited to built-in `pennylane`, `constant`, and `noisy`
 - no arbitrary imports, plugins, or external quantum SDK adapters
@@ -180,7 +180,7 @@ Current constraints:
 
 ## 7. Try multiple manifests
 
-Seven example manifests are provided. Some change optimizer parameters, two select deterministic built-in backends, and one runs client-specific objectives:
+Eight example manifests are provided. Some change optimizer parameters, two select deterministic built-in backends, one runs client-specific objectives, and one runs scalar FedAvg:
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update.json
@@ -190,6 +190,7 @@ python examples/run_from_manifest.py examples/manifests/gradient_update_more_rou
 python examples/run_from_manifest.py examples/manifests/gradient_update_noisy.json
 python examples/run_from_manifest.py examples/manifests/gradient_update_constant.json
 python examples/run_from_manifest.py examples/manifests/client_objectives.json
+python examples/run_from_manifest.py examples/manifests/scalar_fedavg.json
 ```
 
 | Manifest                             | Name                       | Backend             | What changes                   |
@@ -201,6 +202,7 @@ python examples/run_from_manifest.py examples/manifests/client_objectives.json
 | `gradient_update_noisy.json`         | `noisy-gradient-update`    | `noisy`             | Deterministic noisy backend    |
 | `gradient_update_constant.json`      | `constant-gradient-update` | `constant`          | Deterministic constant backend |
 | `client_objectives.json`             | `client-objectives-demo`   | `pennylane`         | Client-specific objectives     |
+| `scalar_fedavg.json`                 | `scalar-fedavg-demo`       | `pennylane`         | Scalar FedAvg + mean aggregation |
 
 Each run produces a separate artifact under `runs/`.
 
@@ -472,7 +474,66 @@ comparison table, `primary_metric` is `final_mean_local_loss` and
 
 ---
 
-## 16. Run checks
+## 16. Run scalar FedAvg from a manifest
+
+```bash
+python examples/run_from_manifest.py examples/manifests/scalar_fedavg.json
+```
+
+This is the scenario-defined form of the same scalar FedAvg path. The manifest
+declares clients, local targets, backend, aggregation, number of rounds,
+initial theta, learning rate, and epsilon:
+
+```json
+{
+  "experiment": "scalar_fedavg",
+  "backend": {
+    "type": "pennylane"
+  },
+  "aggregation": {
+    "type": "mean"
+  }
+}
+```
+
+The execution is still local-only. The important step is structural: the
+scenario describes the aggregation policy, and the artifact records the
+aggregation method, client-tagged inputs, and output for every round.
+
+```text
+qfl-mini: transparent scalar FedAvg demo
+
+Rounds:
+- round 1 | global_theta=0.500000 | mean_local_loss=0.456360 | next_global_theta=0.560176
+- round 2 | global_theta=0.560176 | mean_local_loss=0.419102 | next_global_theta=0.623634
+- round 3 | global_theta=0.623634 | mean_local_loss=0.378076 | next_global_theta=0.689247
+
+Final theta:
+0.689247
+Saved artifact: runs/run_from_manifest_scalar_fedavg_<timestamp>.json
+```
+
+In the saved artifact, each round contains:
+
+```json
+"aggregation": {
+  "method": "mean",
+  "inputs": [
+    {
+      "client_id": "client_1",
+      "local_next_theta": 0.584147
+    }
+  ],
+  "next_global_theta": 0.560176
+}
+```
+
+This is not a full Scenario Contract v0.2 yet, but it is shaped toward the
+same-scenario local-to-real direction.
+
+---
+
+## 17. Run checks
 
 ```bash
 python -m compileall qflmini examples
@@ -484,7 +545,7 @@ pytest
 
 ---
 
-## 17. Where this leaves the project
+## 18. Where this leaves the project
 
 ```text
 Phase 0: minimal execution                            [done]
@@ -493,7 +554,7 @@ Phase 2: manifest/artifact/comparison workflow        [done/active]
 Phase 3: backend abstraction                          [active]
 Phase 4: deterministic backend realism                [active]
 Phase 5: client-specific objectives + manifest support [active]
-Phase 6: transparent scalar FedAvg                    [started]
+Phase 6: scenario-defined transparent scalar FedAvg    [active]
 ```
 
 **What the project can do now:**
@@ -514,6 +575,7 @@ Phase 6: transparent scalar FedAvg                    [started]
 - run a deterministic noisy backend and compare clean vs. noisy results
 - evaluate client-specific local objectives
 - run transparent scalar FedAvg with full per-round and per-client trace
+- run scalar FedAvg from a JSON manifest with explicit mean aggregation
 
 **What is intentionally not supported:**
 

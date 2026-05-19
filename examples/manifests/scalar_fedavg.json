@@ -1,0 +1,26 @@
+{
+  "manifest_version": "0.1",
+  "name": "scalar-fedavg-demo",
+  "description": "Transparent scalar FedAvg with local client targets and full aggregation trace.",
+  "experiment": "scalar_fedavg",
+  "backend": {
+    "type": "pennylane"
+  },
+  "aggregation": {
+    "type": "mean"
+  },
+  "num_rounds": 3,
+  "initial_theta": 0.5,
+  "learning_rate": 0.1,
+  "epsilon": 0.001,
+  "clients": [
+    {
+      "client_id": "client_1",
+      "target": 0.0
+    },
+    {
+      "client_id": "client_2",
+      "target": 0.5
+    }
+  ]
+}

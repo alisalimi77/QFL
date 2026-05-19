@@ -108,10 +108,17 @@ class ScalarFedAvgCoordinator:
                 self._compute_client_update(client, global_theta)
                 for client in self.clients
             ]
-            local_next_thetas = [
-                update["local_next_theta"] for update in client_updates
+            aggregation_inputs = [
+                {
+                    "client_id": update["client_id"],
+                    "local_next_theta": update["local_next_theta"],
+                }
+                for update in client_updates
             ]
-            next_global_theta = sum(local_next_thetas) / len(local_next_thetas)
+            next_global_theta = (
+                sum(item["local_next_theta"] for item in aggregation_inputs)
+                / len(aggregation_inputs)
+            )
             mean_local_loss = (
                 sum(update["loss"] for update in client_updates)
                 / len(client_updates)
@@ -124,7 +131,7 @@ class ScalarFedAvgCoordinator:
                     "client_updates": client_updates,
                     "aggregation": {
                         "method": "mean",
-                        "local_next_thetas": local_next_thetas,
+                        "inputs": aggregation_inputs,
                         "next_global_theta": next_global_theta,
                     },
                     "mean_local_loss": mean_local_loss,

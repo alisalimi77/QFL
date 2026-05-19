@@ -99,6 +99,8 @@ JSON manifest file
   -> validate_gradient_update_manifest() or validate_client_objectives_manifest()
        checks types and constraints, normalizes manifest_version, name,
        description, experiment-specific fields, and backend config
+     validate_scalar_fedavg_manifest()
+       additionally normalizes aggregation config (currently mean only)
   -> build_backend_from_config()  explicitly builds one built-in backend
   -> gradient_update path:
        creates QuantumClient objects with the selected backend
@@ -110,6 +112,11 @@ JSON manifest file
        creates ClientObjective objects from manifest client targets
        evaluate_client_objectives()
        format_client_objectives_report()
+  -> scalar_fedavg path:
+       creates ScalarFedAvgClient configs from manifest client targets
+       creates ScalarFedAvgCoordinator with selected backend
+       run_rounds(num_rounds)
+       format_scalar_fedavg_report()
   -> build_run_artifact({ manifest_path: posix_path, manifest: config,
                           backend: get_backend_metadata(backend),
                           result: result })
@@ -119,6 +126,11 @@ JSON manifest file
 The backend builder is intentionally explicit and limited to built-in backend
 configs: `pennylane`, `constant`, and `noisy`. It does not use dynamic imports,
 a registry, or a plugin system.
+
+The scalar FedAvg path also validates an explicit aggregation config. Only
+`{"type": "mean"}` is supported now. A full Aggregator abstraction is planned
+for later, but the current artifact trace already records aggregation inputs
+and output in an auditable shape.
 
 ## Comparison flow
 

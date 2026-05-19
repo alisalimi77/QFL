@@ -149,10 +149,16 @@ Implemented:
 - full per-round and per-client trace
 - artifact-producing `run_scalar_fedavg.py` example
 - scalar FedAvg support in artifact comparison metrics
+- manifest-driven scalar FedAvg (`examples/manifests/scalar_fedavg.json`)
+- explicit scalar FedAvg aggregation config (`{"type": "mean"}`)
+- aggregation trace inputs and output recorded in artifacts
 
 Remaining planned items:
 
-- manifest-driven scalar FedAvg later
+- Aggregator Extension Contract
+- Scenario Contract v0.2
+- Trace Event Model
+- ClientRuntime Protocol
 - vector parameters later
 - richer deterministic scenarios later
 - toy local data examples later

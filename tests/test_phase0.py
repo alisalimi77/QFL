@@ -31,10 +31,13 @@ from qflmini.manifest import (
     load_gradient_update_manifest,
     load_json_manifest,
     load_manifest,
+    load_scalar_fedavg_manifest,
+    validate_aggregation_config,
     validate_backend_config,
     validate_client_objectives_manifest,
     validate_gradient_update_manifest,
     validate_manifest,
+    validate_scalar_fedavg_manifest,
 )
 from qflmini.backends import ConstantBackend, NoisyBackend, PennyLaneBackend, get_backend_metadata
 from qflmini.federated import ScalarFedAvgClient, ScalarFedAvgCoordinator
@@ -429,6 +432,24 @@ _VALID_CLIENT_OBJECTIVES_MANIFEST = {
 }
 
 
+_VALID_SCALAR_FEDAVG_MANIFEST = {
+    "manifest_version": "0.1",
+    "name": "scalar-fedavg-demo",
+    "description": "Transparent scalar FedAvg with local client targets.",
+    "experiment": "scalar_fedavg",
+    "backend": {"type": "pennylane"},
+    "aggregation": {"type": "mean"},
+    "num_rounds": 3,
+    "initial_theta": 0.5,
+    "learning_rate": 0.1,
+    "epsilon": 0.001,
+    "clients": [
+        {"client_id": "client_1", "target": 0.0},
+        {"client_id": "client_2", "target": 0.5},
+    ],
+}
+
+
 def test_load_json_manifest_returns_dict(tmp_path) -> None:
     manifest_file = tmp_path / "manifest.json"
     manifest_file.write_text('{"experiment": "gradient_update"}', encoding="utf-8")
@@ -563,6 +584,25 @@ def test_validate_backend_config_noisy_requires_integer_seed() -> None:
                 "seed": 4.2,
             }
         )
+
+
+def test_validate_aggregation_config_accepts_mean() -> None:
+    assert validate_aggregation_config({"type": "mean"}) == {"type": "mean"}
+
+
+def test_validate_aggregation_config_requires_object() -> None:
+    with pytest.raises(ValueError, match="aggregation"):
+        validate_aggregation_config("mean")
+
+
+def test_validate_aggregation_config_requires_type() -> None:
+    with pytest.raises(ValueError, match="aggregation.type"):
+        validate_aggregation_config({})
+
+
+def test_validate_aggregation_config_rejects_unknown_type() -> None:
+    with pytest.raises(ValueError, match="Unsupported aggregation type"):
+        validate_aggregation_config({"type": "weighted_mean"})
 
 
 def test_build_backend_from_config_returns_pennylane_backend() -> None:
@@ -762,6 +802,178 @@ def test_client_objectives_manifest_run_path_with_constant_backend() -> None:
     assert result["mean_local_loss"] == pytest.approx(0.125)
 
 
+def test_validate_scalar_fedavg_manifest_returns_normalized_values() -> None:
+    config = validate_scalar_fedavg_manifest(_VALID_SCALAR_FEDAVG_MANIFEST)
+
+    assert config["manifest_version"] == "0.1"
+    assert config["name"] == "scalar-fedavg-demo"
+    assert config["description"] == "Transparent scalar FedAvg with local client targets."
+    assert config["experiment"] == "scalar_fedavg"
+    assert config["backend"] == {"type": "pennylane"}
+    assert config["aggregation"] == {"type": "mean"}
+    assert config["num_rounds"] == 3
+    assert config["initial_theta"] == 0.5
+    assert config["learning_rate"] == 0.1
+    assert config["epsilon"] == 0.001
+    assert config["clients"] == [
+        {"client_id": "client_1", "target": 0.0},
+        {"client_id": "client_2", "target": 0.5},
+    ]
+
+
+def test_validate_scalar_fedavg_manifest_defaults_aggregation() -> None:
+    without_aggregation = {
+        k: v for k, v in _VALID_SCALAR_FEDAVG_MANIFEST.items() if k != "aggregation"
+    }
+
+    config = validate_scalar_fedavg_manifest(without_aggregation)
+
+    assert config["aggregation"] == {"type": "mean"}
+
+
+def test_validate_scalar_fedavg_manifest_missing_num_rounds_raises() -> None:
+    bad = dict(_VALID_SCALAR_FEDAVG_MANIFEST)
+    del bad["num_rounds"]
+
+    with pytest.raises(ValueError, match="num_rounds"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_num_rounds_below_one_raises() -> None:
+    bad = dict(_VALID_SCALAR_FEDAVG_MANIFEST, num_rounds=0)
+
+    with pytest.raises(ValueError, match="num_rounds"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_non_numeric_initial_theta_raises() -> None:
+    bad = dict(_VALID_SCALAR_FEDAVG_MANIFEST, initial_theta="0.5")
+
+    with pytest.raises(ValueError, match="initial_theta"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_nonpositive_learning_rate_raises() -> None:
+    bad = dict(_VALID_SCALAR_FEDAVG_MANIFEST, learning_rate=0.0)
+
+    with pytest.raises(ValueError, match="learning_rate"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_nonpositive_epsilon_raises() -> None:
+    bad = dict(_VALID_SCALAR_FEDAVG_MANIFEST, epsilon=0.0)
+
+    with pytest.raises(ValueError, match="epsilon"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_missing_clients_raises() -> None:
+    bad = dict(_VALID_SCALAR_FEDAVG_MANIFEST)
+    del bad["clients"]
+
+    with pytest.raises(ValueError, match="clients"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_empty_clients_raises() -> None:
+    bad = dict(_VALID_SCALAR_FEDAVG_MANIFEST, clients=[])
+
+    with pytest.raises(ValueError, match="clients"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_client_must_be_object() -> None:
+    bad = dict(_VALID_SCALAR_FEDAVG_MANIFEST, clients=["client_1"])
+
+    with pytest.raises(ValueError, match="clients\\[0\\]"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_missing_client_id_raises() -> None:
+    bad = dict(
+        _VALID_SCALAR_FEDAVG_MANIFEST,
+        clients=[{"target": 0.0}],
+    )
+
+    with pytest.raises(ValueError, match="client_id"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_blank_client_id_raises() -> None:
+    bad = dict(
+        _VALID_SCALAR_FEDAVG_MANIFEST,
+        clients=[{"client_id": "   ", "target": 0.0}],
+    )
+
+    with pytest.raises(ValueError, match="client_id"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_missing_target_raises() -> None:
+    bad = dict(
+        _VALID_SCALAR_FEDAVG_MANIFEST,
+        clients=[{"client_id": "client_1"}],
+    )
+
+    with pytest.raises(ValueError, match="target"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_scalar_fedavg_manifest_non_numeric_target_raises() -> None:
+    bad = dict(
+        _VALID_SCALAR_FEDAVG_MANIFEST,
+        clients=[{"client_id": "client_1", "target": "0.0"}],
+    )
+
+    with pytest.raises(ValueError, match="target"):
+        validate_scalar_fedavg_manifest(bad)
+
+
+def test_validate_manifest_dispatches_scalar_fedavg() -> None:
+    config = validate_manifest(_VALID_SCALAR_FEDAVG_MANIFEST)
+
+    assert config["experiment"] == "scalar_fedavg"
+
+
+def test_load_scalar_fedavg_manifest_loads_and_validates(tmp_path) -> None:
+    manifest_file = tmp_path / "scalar_fedavg.json"
+    manifest_file.write_text(
+        json.dumps(_VALID_SCALAR_FEDAVG_MANIFEST),
+        encoding="utf-8",
+    )
+
+    config = load_scalar_fedavg_manifest(manifest_file)
+
+    assert config["experiment"] == "scalar_fedavg"
+    assert config["aggregation"] == {"type": "mean"}
+
+
+def test_scalar_fedavg_manifest_run_path_with_constant_backend() -> None:
+    config = validate_scalar_fedavg_manifest(
+        {
+            **_VALID_SCALAR_FEDAVG_MANIFEST,
+            "backend": {"type": "constant", "value": 0.5},
+        }
+    )
+    backend = build_backend_from_config(config["backend"])
+    coordinator = ScalarFedAvgCoordinator(
+        clients=[
+            ScalarFedAvgClient(client["client_id"], target=client["target"])
+            for client in config["clients"]
+        ],
+        backend=backend,
+        initial_theta=config["initial_theta"],
+        learning_rate=config["learning_rate"],
+        epsilon=config["epsilon"],
+    )
+
+    result = coordinator.run_rounds(1)
+
+    assert result["algorithm"] == "scalar_fedavg"
+    assert result["rounds"][0]["aggregation"]["method"] == "mean"
+    assert result["final_theta"] == pytest.approx(config["initial_theta"])
+
+
 def test_validate_gradient_update_manifest_missing_field_raises() -> None:
     bad = dict(_VALID_MANIFEST)
     del bad["num_rounds"]
@@ -884,6 +1096,46 @@ def test_client_objectives_manifest_artifact_shape(tmp_path) -> None:
     assert "mean_local_loss" in saved_data["run"]["result"]
 
 
+def test_scalar_fedavg_manifest_artifact_shape(tmp_path) -> None:
+    config = validate_scalar_fedavg_manifest(_VALID_SCALAR_FEDAVG_MANIFEST)
+    backend = build_backend_from_config(config["backend"])
+    coordinator = ScalarFedAvgCoordinator(
+        clients=[
+            ScalarFedAvgClient(client["client_id"], target=client["target"])
+            for client in config["clients"]
+        ],
+        backend=backend,
+        initial_theta=config["initial_theta"],
+        learning_rate=config["learning_rate"],
+        epsilon=config["epsilon"],
+    )
+    result = coordinator.run_rounds(config["num_rounds"])
+
+    artifact = build_run_artifact(
+        example_name="run_from_manifest_scalar_fedavg",
+        run_result={
+            "manifest_path": "examples/manifests/scalar_fedavg.json",
+            "manifest": config,
+            "backend": get_backend_metadata(backend),
+            "result": result,
+        },
+    )
+    artifact_path = artifact_path_for_run(artifact["run_id"], output_dir=tmp_path)
+    saved_path = save_json_artifact(artifact, artifact_path)
+    saved_data = json.loads(saved_path.read_text(encoding="utf-8"))
+    round_result = saved_data["run"]["result"]["rounds"][0]
+
+    assert saved_data["run"]["manifest_path"] == "examples/manifests/scalar_fedavg.json"
+    assert saved_data["run"]["manifest"]["experiment"] == "scalar_fedavg"
+    assert saved_data["run"]["manifest"]["aggregation"] == {"type": "mean"}
+    assert saved_data["run"]["backend"]["name"] == "pennylane"
+    assert saved_data["run"]["result"]["algorithm"] == "scalar_fedavg"
+    assert "rounds" in saved_data["run"]["result"]
+    assert "inputs" in round_result["aggregation"]
+    assert "final_theta" in saved_data["run"]["result"]
+    assert "final_mean_local_loss" in saved_data["run"]["result"]
+
+
 def test_validate_manifest_missing_manifest_version_raises() -> None:
     bad = dict(_VALID_MANIFEST)
     del bad["manifest_version"]
@@ -937,7 +1189,11 @@ def test_all_example_manifests_are_valid() -> None:
 
     for manifest_file in manifest_files:
         config = load_manifest(manifest_file)
-        assert config["experiment"] in {"gradient_update", "client_objectives"}, (
+        assert config["experiment"] in {
+            "gradient_update",
+            "client_objectives",
+            "scalar_fedavg",
+        }, (
             f"{manifest_file.name}: expected supported experiment"
         )
 
@@ -1070,7 +1326,10 @@ _SCALAR_FEDAVG_ARTIFACT = {
                     ],
                     "aggregation": {
                         "method": "mean",
-                        "local_next_thetas": [0.5841, 0.5337],
+                        "inputs": [
+                            {"client_id": "client_1", "local_next_theta": 0.5841},
+                            {"client_id": "client_2", "local_next_theta": 0.5337},
+                        ],
                         "next_global_theta": 0.5589,
                     },
                     "mean_local_loss": 0.456359,
@@ -1081,7 +1340,10 @@ _SCALAR_FEDAVG_ARTIFACT = {
                     "client_updates": [],
                     "aggregation": {
                         "method": "mean",
-                        "local_next_thetas": [0.62, 0.58],
+                        "inputs": [
+                            {"client_id": "client_1", "local_next_theta": 0.62},
+                            {"client_id": "client_2", "local_next_theta": 0.58},
+                        ],
                         "next_global_theta": 0.6,
                     },
                     "mean_local_loss": 0.3,
@@ -1090,6 +1352,26 @@ _SCALAR_FEDAVG_ARTIFACT = {
             "final_theta": 0.6,
             "final_mean_local_loss": 0.3,
         },
+    },
+}
+
+
+_MANIFEST_SCALAR_FEDAVG_ARTIFACT = {
+    "run_id": "run_from_manifest_scalar_fedavg_20260101T000004Z",
+    "example": "run_from_manifest_scalar_fedavg",
+    "run": {
+        "manifest_path": "examples/manifests/scalar_fedavg.json",
+        "manifest": {
+            "manifest_version": "0.1",
+            "name": "scalar-fedavg-demo",
+            "experiment": "scalar_fedavg",
+            "aggregation": {"type": "mean"},
+        },
+        "backend": {
+            "name": "pennylane",
+            "class": "PennyLaneBackend",
+        },
+        "result": _SCALAR_FEDAVG_ARTIFACT["run"]["result"],
     },
 }
 
@@ -1232,6 +1514,15 @@ def test_extract_experiment_metrics_scalar_fedavg() -> None:
     assert metrics["secondary_value"] == pytest.approx(0.6)
 
 
+def test_extract_experiment_metrics_manifest_scalar_fedavg() -> None:
+    metrics = extract_experiment_metrics(_MANIFEST_SCALAR_FEDAVG_ARTIFACT)
+
+    assert metrics["primary_metric"] == "final_mean_local_loss"
+    assert metrics["primary_value"] == pytest.approx(0.3)
+    assert metrics["secondary_metric"] == "final_theta"
+    assert metrics["secondary_value"] == pytest.approx(0.6)
+
+
 def test_extract_experiment_metrics_unknown_without_metrics() -> None:
     metrics = extract_experiment_metrics({"run": {"example": "unknown"}})
 
@@ -1363,7 +1654,7 @@ def test_format_artifact_comparison_handles_mixed_experiments() -> None:
     summaries = [
         summarize_artifact(_MANIFEST_ARTIFACT),
         summarize_artifact(_CLIENT_OBJECTIVES_MANIFEST_ARTIFACT),
-        summarize_artifact(_SCALAR_FEDAVG_ARTIFACT),
+        summarize_artifact(_MANIFEST_SCALAR_FEDAVG_ARTIFACT),
     ]
 
     output = format_artifact_comparison(summaries)
@@ -1371,6 +1662,7 @@ def test_format_artifact_comparison_handles_mixed_experiments() -> None:
     assert "gradient_update" in output
     assert "client_objectives" in output
     assert "scalar_fedavg" in output
+    assert "scalar-fedavg-demo" in output
     assert "client-objectives-demo" in output
     assert "mean_local_loss" in output
     assert "aggregated_result" in output
@@ -1591,9 +1883,18 @@ def test_scalar_fedavg_aggregates_local_updates() -> None:
 
     result = coordinator.run_rounds(1)
     round_result = result["rounds"][0]
+    aggregation = round_result["aggregation"]
 
-    assert round_result["aggregation"]["method"] == "mean"
-    assert round_result["aggregation"]["next_global_theta"] == pytest.approx(0.5)
+    assert aggregation["method"] == "mean"
+    assert aggregation["inputs"] == [
+        {"client_id": "client_1", "local_next_theta": 0.5},
+        {"client_id": "client_2", "local_next_theta": 0.5},
+    ]
+    expected_next_theta = (
+        sum(item["local_next_theta"] for item in aggregation["inputs"])
+        / len(aggregation["inputs"])
+    )
+    assert aggregation["next_global_theta"] == pytest.approx(expected_next_theta)
     assert result["final_theta"] == pytest.approx(0.5)
 
 
@@ -1617,6 +1918,7 @@ def test_scalar_fedavg_trace_structure() -> None:
         assert "client_updates" in round_result
         assert "aggregation" in round_result
         assert "mean_local_loss" in round_result
+        assert "inputs" in round_result["aggregation"]
         for update in round_result["client_updates"]:
             for key in (
                 "client_id",
@@ -1672,15 +1974,17 @@ def test_scalar_fedavg_artifact_shape(tmp_path) -> None:
     assert "backend" in saved_data["run"]
     assert saved_data["run"]["result"]["algorithm"] == "scalar_fedavg"
     assert "rounds" in saved_data["run"]["result"]
+    assert "inputs" in saved_data["run"]["result"]["rounds"][0]["aggregation"]
     assert "final_theta" in saved_data["run"]["result"]
     assert "final_mean_local_loss" in saved_data["run"]["result"]
 
 
 def test_scalar_fedavg_comparison_support() -> None:
-    summary = summarize_artifact(_SCALAR_FEDAVG_ARTIFACT)
+    summary = summarize_artifact(_MANIFEST_SCALAR_FEDAVG_ARTIFACT)
     output = format_artifact_comparison([summary])
 
     assert summary["experiment"] == "scalar_fedavg"
+    assert summary["manifest_name"] == "scalar-fedavg-demo"
     assert summary["primary_metric"] == "final_mean_local_loss"
     assert summary["secondary_metric"] == "final_theta"
     assert "scalar_fedavg" in output

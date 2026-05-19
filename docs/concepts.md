@@ -70,6 +70,29 @@ aggregated_result = mean(client_results)
 
 This is intentionally simple. Future versions may support weighted aggregation, secure aggregation, or richer strategies.
 
+## Aggregation Trace
+
+Aggregation is a first-class federated systems primitive. For scalar FedAvg,
+each round records the aggregation method, the explicit client-tagged inputs,
+and the output:
+
+```json
+{
+  "method": "mean",
+  "inputs": [
+    {
+      "client_id": "client_1",
+      "local_next_theta": 0.584147
+    }
+  ],
+  "next_global_theta": 0.560176
+}
+```
+
+Only mean aggregation is supported today. The explicit trace shape is intended
+to support future aggregator contracts such as weighted, clipped, median, or
+robust aggregation without losing auditability.
+
 ## Objective and Loss
 
 Some examples compute a simple squared loss to make optimization progress observable:
@@ -98,7 +121,9 @@ Scalar FedAvg is qfl-mini's minimal FedAvg-style loop over one scalar parameter.
 global theta -> client local updates -> mean aggregation -> next global theta
 ```
 
-The trace records every round, every client result, local loss, finite-difference gradient, local updated theta, aggregation input, and next global theta. This is not FedAvg over model weights, not dataset training, and not a full federated learning framework.
+The trace records every round, every client result, local loss, finite-difference gradient, local updated theta, aggregation inputs, and next global theta. This is not FedAvg over model weights, not dataset training, and not a full federated learning framework.
+
+Scalar FedAvg can run directly from Python or from `examples/manifests/scalar_fedavg.json`. The manifest form is an early scenario-defined experiment: clients, targets, backend, aggregation, rounds, and scalar update settings are declared in JSON while execution remains local.
 
 ## Deterministic Noise
 
@@ -154,25 +179,34 @@ Artifacts are designed to be inspectable by humans and machines without any spec
 
 ## Artifact Comparison
 
-Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts summary fields, and prints a plain text table. Comparison is experiment-aware: `gradient_update` uses `final_loss` and `final_theta`, `client_objectives` uses `mean_local_loss` and `aggregated_result`, and direct `scalar_fedavg` artifacts use `final_mean_local_loss` and `final_theta`. This avoids forcing all experiments into gradient-specific columns.
+Artifact comparison is a lightweight way to inspect saved run artifacts side by side. It reads saved JSON files, extracts summary fields, and prints a plain text table. Comparison is experiment-aware: `gradient_update` uses `final_loss` and `final_theta`, `client_objectives` uses `mean_local_loss` and `aggregated_result`, and `scalar_fedavg` artifacts use `final_mean_local_loss` and `final_theta`. This avoids forcing all experiments into gradient-specific columns.
 
 It is intentionally plain text and dependency-free. It is not a dashboard, not a plotting tool, and not an experiment tracking server.
 
 ## Experiment Manifest
 
-A manifest is a small JSON file that declares the parameters for a supported experiment. qfl-mini currently supports `gradient_update` and `client_objectives` manifests. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.
+A manifest is a small JSON file that declares the parameters for a supported experiment. qfl-mini currently supports `gradient_update`, `client_objectives`, and `scalar_fedavg` manifests. Running `run_from_manifest.py` with a manifest is equivalent to editing the Python example directly, but without touching code.
 
 Each manifest includes:
 
 - `manifest_version` — currently `"0.1"`. Required. Controls which validation rules apply.
 - `name` — a short human-readable identifier such as `"default-gradient-update"`. Required. Appears in artifact comparison output so runs can be told apart at a glance.
 - `description` — a sentence explaining what the manifest does. Optional; defaults to empty string.
-- `experiment` — currently either `"gradient_update"` or `"client_objectives"`.
+- `experiment` — currently `"gradient_update"`, `"client_objectives"`, or `"scalar_fedavg"`.
 - `backend` — optional built-in backend config. If omitted, it defaults to `{"type": "pennylane"}`.
 
-For `gradient_update`, manifests include fields such as `num_clients`, `num_rounds`, `initial_theta`, `learning_rate`, `target`, and `epsilon`. For `client_objectives`, manifests include a `clients` list where each client has `client_id`, `theta`, and `target`.
+For `gradient_update`, manifests include fields such as `num_clients`, `num_rounds`, `initial_theta`, `learning_rate`, `target`, and `epsilon`. For `client_objectives`, manifests include a `clients` list where each client has `client_id`, `theta`, and `target`. For `scalar_fedavg`, manifests include clients with local targets, scalar update settings, and an optional `aggregation` block that currently supports only `{"type": "mean"}`.
 
 Backend configs are limited to `pennylane`, `constant`, and `noisy`; there are no arbitrary imports or plugin paths in manifest files. Multiple example manifests live under `examples/manifests/`.
+
+## Scenario Runtime Direction
+
+The current JSON manifests are not the full future Scenario Contract yet, but
+they are moving in that direction. A scenario-defined experiment should make
+the important system choices visible: clients, backend, aggregation,
+algorithm/update settings, trace, and artifact output. The goal is for the same
+scenario shape to remain recognizable as qfl-mini grows from local simulation
+toward hybrid and real-client execution.
 
 ## Run ID
 
