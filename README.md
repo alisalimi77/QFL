@@ -55,7 +55,7 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 
 **Execution Sandbox** — a controlled environment for trying coordination patterns before adding networking, backend adapters, or hardware execution.
 
-**Aggregation** — combining client results. Currently mean aggregation only.
+**Aggregation** — combining client results or client updates. Currently mean aggregation only. Scalar FedAvg artifacts record explicit aggregation inputs and output for auditability.
 
 **Objective / Loss Tracking** — each parameter update round computes a simple squared loss so progress is observable.
 
@@ -63,7 +63,7 @@ Before Quantum Federated Learning can scale, we need simple ways to execute, obs
 
 **Transparent Scalar FedAvg** — a minimal FedAvg-style loop over one scalar parameter. Clients compute local finite-difference updates from local objectives, and the server averages the local updated parameters. It is trace-first and not full model-weight FedAvg.
 
-**Experiment Manifest** — a JSON v0.1 file that declares a supported experiment, currently `gradient_update` or `client_objectives`, including optional built-in backend config.
+**Experiment Manifest** — a JSON v0.1 file that declares a supported experiment, currently `gradient_update`, `client_objectives`, or `scalar_fedavg`, including optional built-in backend config.
 
 **Reproducibility Artifact** — a timestamped JSON file containing the run trace and environment metadata.
 
@@ -148,8 +148,9 @@ The manifest describes the experiment declaratively:
 - `manifest_version` is currently `"0.1"`
 - `name` gives each manifest a human-readable identifier visible in artifact comparison output
 - `description` documents the manifest's purpose (optional)
-- supported experiments are `gradient_update` and `client_objectives`; JSON only
+- supported experiments are `gradient_update`, `client_objectives`, and `scalar_fedavg`; JSON only
 - `backend` is optional; if omitted, it defaults to `{"type": "pennylane"}`
+- `aggregation` is supported for `scalar_fedavg`; if omitted, it defaults to `{"type": "mean"}`
 
 Manifests can select one of qfl-mini's built-in backends:
 
@@ -180,6 +181,20 @@ Manifests can select one of qfl-mini's built-in backends:
 This is an explicit built-in backend builder, not arbitrary Python imports, a
 plugin system, or support for external quantum SDKs.
 
+Scalar FedAvg manifests introduce an explicit aggregation block:
+
+```json
+"aggregation": {
+  "type": "mean"
+}
+```
+
+Only mean aggregation is supported for now. Scalar FedAvg artifacts record the
+aggregation method, each client `local_next_theta` input, and the resulting
+`next_global_theta`. This is a small step toward a scenario runtime where the
+same scenario can later move from local simulation to hybrid or real-client
+execution.
+
 The `client_objectives` manifest uses local client targets, not datasets:
 
 ```json
@@ -203,10 +218,12 @@ Several example manifests are provided:
 | `gradient_update_noisy.json`       | `noisy-gradient-update`    | `noisy`             | Deterministic noisy backend    |
 | `gradient_update_constant.json`    | `constant-gradient-update` | `constant`          | Deterministic constant backend |
 | `client_objectives.json`           | `client-objectives-demo`   | `pennylane`         | Client-specific objectives     |
+| `scalar_fedavg.json`               | `scalar-fedavg-demo`       | `pennylane`         | Transparent scalar FedAvg      |
 
 ```bash
 python examples/run_from_manifest.py examples/manifests/gradient_update_low_lr.json
 python examples/run_from_manifest.py examples/manifests/client_objectives.json
+python examples/run_from_manifest.py examples/manifests/scalar_fedavg.json
 ```
 
 ## Compare artifacts
@@ -228,7 +245,7 @@ run_from_manifest_client_objectives_...         client-objectives-demo   client_
 ```
 
 Comparison is experiment-aware. For `gradient_update`, the primary metric is `final_loss` and the secondary metric is `final_theta`. For `client_objectives`, the primary metric is `mean_local_loss` and the secondary metric is `aggregated_result`. Backend details are still shown when available. This is a lightweight comparison helper — no dashboard, no database, no plotting.
-For direct scalar FedAvg artifacts, the primary metric is `final_mean_local_loss` and the secondary metric is `final_theta`.
+For scalar FedAvg artifacts, whether direct or manifest-run, the primary metric is `final_mean_local_loss` and the secondary metric is `final_theta`.
 
 ## Example output
 
@@ -297,7 +314,7 @@ python -m compileall qflmini examples
 
 ## Current status
 
-Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is done/active; Phase 3 and Phase 4 are active; Phase 5 is active; Phase 6 is started.
+Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is done/active; Phase 3 and Phase 4 are active; Phase 5 is active; Phase 6 is active.
 
 **Implemented:**
 
@@ -315,6 +332,8 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is don
 - finite-difference gradient update demo
 - client-specific objective evaluation and mean local loss
 - transparent scalar FedAvg with per-round and per-client trace
+- scenario-defined scalar FedAvg manifest with mean aggregation config
+- scalar FedAvg aggregation trace inputs and output
 - JSON manifest v0.1 for gradient update and client objective experiments
 - manifest-driven client-specific objective evaluation
 - manifest versioning (`manifest_version`) and names (`name`)
@@ -338,7 +357,7 @@ Alpha research-infrastructure seed. Phase 0 and Phase 1 are done; Phase 2 is don
 - arbitrary backend loading or imports from manifests
 - backend plugin system
 - YAML manifests
-- manifest support beyond `gradient_update` and `client_objectives`
+- manifest support beyond `gradient_update`, `client_objectives`, and `scalar_fedavg`
 - general config/plugin framework
 - dashboard or plotting tools
 - Qiskit / Braket / Cirq adapters
@@ -360,7 +379,7 @@ Phase 2: manifest/artifact/comparison workflow                    [done/active]
 Phase 3: backend abstraction                                      [active]
 Phase 4: deterministic backend realism and backend-aware manifests [active]
 Phase 5: client-specific objectives                               [started]
-Phase 6: transparent scalar FedAvg                                [started]
+Phase 6: scenario-defined transparent scalar FedAvg                [active]
 ```
 
 See [docs/roadmap.md](docs/roadmap.md) for the staged roadmap.
